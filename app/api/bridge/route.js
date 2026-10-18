@@ -4,7 +4,31 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=30;
 const json=(data,status=200)=>NextResponse.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
-const fail=(e)=>json({ok:false,error:String(e?.message||e).slice(0,350)},400);
+// Never return raw RPC/SDK exception text: ethers errors can embed private RPC API keys in the URL.
+const knownSafeErrors = [
+  'Valid L2 transaction hash and wallet address required.',
+  'DBK transaction not found.',
+  'Connected wallet is not the transaction sender.',
+  'Withdrawal L2 transaction was not successful or is unconfirmed.',
+  'Expected exactly one withdrawal message',
+  'Withdrawal is not READY_TO_PROVE.',
+  'Withdrawal is not READY_FOR_RELAY.',
+  'Generated transaction target is not the documented DBK OptimismPortal.',
+  'Unexpected withdrawal contract.',
+  'Could not construct DBK withdrawal.',
+  'Insufficient DBK ETH',
+  'DBK or Ethereum RPC health check failed.',
+  'Invalid address or ETH amount.',
+  'Amount must be greater than 0.',
+  'Unexpected transaction value',
+  'Unsupported action.'
+];
+const fail=(e)=>{
+  const message=String(e?.message||'');
+  const safe=knownSafeErrors.some(prefix=>message.startsWith(prefix)) ? message.slice(0,250) :
+    'RPC or bridge request failed. Check the RPC provider and transaction status. No transaction was broadcast by this endpoint.';
+  return json({ok:false,error:safe},400);
+};
 export async function GET(request) {
   const url=new URL(request.url);
   const mode=url.searchParams.get('mode');

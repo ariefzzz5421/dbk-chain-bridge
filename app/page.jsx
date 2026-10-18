@@ -26,7 +26,8 @@ const statusInfo={
  READY_TO_PROVE:{step:1,text:'Ready to prove',tone:'action',desc:'You may prepare the Prove transaction on Ethereum.'},
  IN_CHALLENGE_PERIOD:{step:2,text:'Challenge period',tone:'waiting',desc:'The proof has been submitted. Wait until the challenge period is over.'},
  READY_FOR_RELAY:{step:3,text:'Ready to finalize',tone:'action',desc:'You may finalize the withdrawal to Ethereum.'},
- RELAYED:{step:4,text:'Withdrawal completed',tone:'success',desc:'Optimism SDK reports this withdrawal as successfully relayed.'},
+ RELAYED:{step:4,text:'Withdrawal completed',tone:'success',desc:'OptimismPortal reports the withdrawal as finalized.'},
+ STATUS_UNVERIFIED:{step:0,text:'Withdrawal found — portal status unverified',tone:'waiting',desc:'The DBK event was verified, but the L1 bridge status could not be confirmed. Signing is disabled.'},
 };
 async function api(path,options){
  const response=await fetch('/api/bridge'+path,{cache:'no-store',...options});
@@ -246,7 +247,14 @@ function AppInner(){
      {error&&<div className="error-box" role="alert"><AlertTriangle size={18}/><p>{error}</p><button onClick={()=>setError('')} aria-label="Dismiss">×</button></div>}
      {status&&mode==='recover'&&<div className="status-result">
       <div className="result-head"><div><div className="section-label">WITHDRAWAL STATUS</div><h3>{statusView?.text}</h3></div><Chip className={'status-'+(statusView?.tone||'waiting')}>{statusView?.tone==='action'?'ACTION REQUIRED':statusView?.tone==='success'?'COMPLETE':'PENDING'}</Chip></div>
-      <p>{statusView?.desc}</p>
+      <p>{status?.explanation||statusView?.desc}</p>
+      {status?.sourceVerified&&<div className="verified-withdrawal-details">
+        <div className="detail-row"><span>Withdrawal</span><b>{Number(status.amount).toLocaleString(undefined,{maximumFractionDigits:12})} ETH</b></div>
+        <div className="detail-row"><span>Recipient on Ethereum</span><b>{short(status.recipient,10)}</b></div>
+        <div className="detail-row"><span>Withdrawal hash</span><b>{short(status.withdrawalHash,10)}</b></div>
+        {status.statusReasonCode&&<p className="under-button-note bad">Diagnostic: {status.statusReasonCode}</p>}
+        {!status.recipientIsWallet&&<p className="under-button-note bad">Withdrawal recipient does not match connected wallet. Transaction actions disabled.</p>}
+      </div>}
       <div className="timeline animated-timeline">{STEPS.map((s,i)=><div className={'step '+(i<statusView.step?'done':i===statusView.step?'active':'future')} key={s.name}><div className="step-circle">{i<statusView.step?<Check size={15}/>:String(i+1).padStart(2,'0')}</div><div><b>{s.name}</b><span>{s.desc}</span></div></div>)}</div>
       <div className="result-actions">{status.readyToProve&&<button className="primary-action" onClick={()=>prepare('prove')} disabled={!!loading}><ShieldCheck size={17}/> Prepare Prove <ArrowRight size={17}/></button>}{status.readyToFinalize&&<button className="primary-action" onClick={()=>prepare('finalize')} disabled={!!loading}><Zap size={17}/> Prepare Finalize <ArrowRight size={17}/></button>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
      </div>}

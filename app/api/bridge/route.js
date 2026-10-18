@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { inspectWithdrawalViem } from '../../../lib/withdrawal';
 import { getHealth, resolveWithdrawal, prepareL1Action, prepareNewWithdrawal, validHash, validAddress } from '../../../lib/bridge';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -23,7 +24,14 @@ const knownSafeErrors = [
   'Unexpected transaction value',
   'Unsupported action.',
   'No verified DBK RPC can provide the historical withdrawal data required for this action.',
-  'No verified Ethereum RPC available.'
+  'No verified Ethereum RPC available.',
+  'RPC_VERIFICATION_UNAVAILABLE',
+  'DBK_TRANSACTION_UNAVAILABLE',
+  'WITHDRAWAL_TRANSACTION_NOT_SUCCESSFUL',
+  'WALLET_MISMATCH',
+  'WITHDRAWAL_EVENT_DECODE_FAILED',
+  'EXPECTED_ONE_MESSAGE_PASSED_EVENT',
+  'WITHDRAWAL_HASH_MISMATCH'
 ];
 const fail=(e)=>{
   const message=String(e?.message||'');
@@ -40,8 +48,8 @@ export async function GET(request) {
     const hash=url.searchParams.get('hash')||'';
     const address=url.searchParams.get('address')||'';
     if(!validHash(hash)||!validAddress(address)) return json({ok:false,error:'Invalid tx hash / address'},400);
-    const r=await resolveWithdrawal(hash,address);
-    return json({ok:true,status:r.statusName,sourceSender:r.txFrom,hash,readyToProve:r.statusName==='READY_TO_PROVE',readyToFinalize:r.statusName==='READY_FOR_RELAY'});
+    const r=await inspectWithdrawalViem(hash,address);
+    return json({ok:true,...r});
   }catch(e){return fail(e);}
 }
 export async function POST(request) {
@@ -50,8 +58,8 @@ export async function POST(request) {
     const action=body?.action;
     if(!['prove','finalize','start'].includes(action)) return json({ok:false,error:'Unsupported operation'},400);
     let tx;
-    if(action==='start') tx=await prepareNewWithdrawal({amount:body.amount,address:body.address});
-    else tx=await prepareL1Action({hash:body.hash,address:body.address,action});
+    if(action==='start') return json({ok:false,error:'New DBK withdrawals are temporarily disabled until the direct recovery flow is validated.'},409);
+    else return json({ok:false,error:'On-chain signature actions are temporarily disabled while the MessagePassed recovery path is validated.'},409);
     return json({ok:true,transaction:tx});
   }catch(e){return fail(e);}
 }

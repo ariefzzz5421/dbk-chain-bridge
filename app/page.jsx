@@ -38,12 +38,7 @@ function Chip({children,className=''}){return <span className={'chip '+className
 function ChainSymbol({type}) {
  return <div className={'chain-symbol '+type} role="img" aria-label={type==='dbk'?'DBK Chain':'Ethereum'}>
  {type==='dbk'
- ? <svg className="dbk-icon" viewBox="0 0 64 64" aria-hidden="true">
-     <defs><linearGradient id="dbkgradient" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e9dcff"/><stop offset="1" stopColor="#b69aff"/></linearGradient></defs>
-     <rect x="5" y="5" width="54" height="54" rx="16" fill="#6f4fc1"/>
-     <path d="M22 19v25m0-18h10a9 9 0 0 1 0 18H22m17-25v25m0-13 10-7m-10 7 10 13" stroke="url(#dbkgradient)" strokeWidth="4.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-   </svg>
- : <svg className="ethereum-icon" viewBox="0 0 256 417" aria-hidden="true">
+ ? <img className="dbk-official-logo" src="/dbk-logo.webp" alt="" width="48" height="48" aria-hidden="true"/> : <svg className="ethereum-icon" viewBox="0 0 256 417" aria-hidden="true">
    <path fill="#9BA8EB" d="M127.9 0L125.1 9.5V279.2L127.9 282l127.9-75.6z"/>
    <path fill="#6376CD" d="M127.9 0L0 206.4L127.9 282V154.1z"/>
    <path fill="#5264B8" d="M127.9 306.2L126.3 308.2v106.9l1.6 1.8L255.9 230z"/>
@@ -198,7 +193,7 @@ function AppInner(){
  return <div className="app-frame">
   <div className="ambient glow-one"/><div className="ambient glow-two"/>
   <header className="topbar">
-   <div className="brand"><div className="brand-mark"><ArrowUpRight size={20} strokeWidth={2.8}/></div><div><b>DBK<span>PORTAL</span></b><small>RECOVERY INTERFACE</small></div></div>
+   <div className="brand"><div className="brand-mark"><img src="/dbk-logo.webp" alt="DBK" className="brand-dbk-logo" width="38" height="38"/></div><div><b>DBK<span>PORTAL</span></b><small>RECOVERY INTERFACE</small></div></div>
    <div className="nav-links"><a href="#console">Bridge</a><a href="#how-it-works">How it works</a><ButtonLink href="https://docs.dbkchain.io/bridge/bridge-sdk">Docs</ButtonLink></div>
    <div className="top-actions">
     <Chip className="mainnet-chip"><span className="live-dot"/> Ethereum Mainnet</Chip>

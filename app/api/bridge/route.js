@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { inspectWithdrawalViem } from '../../../lib/withdrawal';
+import { prepareVerifiedRecovery } from '../../../lib/recovery-actions';
 import { readFinalizationEvidence } from '../../../lib/finalization';
 import { getHealth, resolveWithdrawal, prepareL1Action, prepareNewWithdrawal, validHash, validAddress } from '../../../lib/bridge';
 export const runtime='nodejs';
@@ -26,6 +27,27 @@ const knownSafeErrors = [
   'Unsupported action.',
   'No verified DBK RPC can provide the historical withdrawal data required for this action.',
   'No verified Ethereum RPC available.',
+  'UNSUPPORTED_RECOVERY_ACTION',
+  'INVALID_DBK_WITHDRAWAL_HASH',
+  'INVALID_CONNECTED_WALLET',
+  'WITHDRAWAL_RECIPIENT_MISMATCH',
+  'ALREADY_FINALIZED_NO_ACTION_REQUIRED',
+  'NOT_READY_TO_PROVE',
+  'NOT_READY_TO_FINALIZE',
+  'WITHDRAWAL_NOT_VERIFIED',
+  'VERIFIED_RPC_UNAVAILABLE',
+  'HISTORICAL_RECEIPT_UNAVAILABLE',
+  'DBK_TRANSACTION_NOT_SUCCESSFUL',
+  'MESSAGE_PASSED_DECODE_FAILED',
+  'AMBIGUOUS_WITHDRAWAL',
+  'WITHDRAWAL_CHANGED',
+  'PORTAL_VERSION_UNVERIFIED',
+  'PORTAL_VERSION_NOT_SUPPORTED_FOR_PROVE',
+  'OUTPUT_ROOT_NOT_AVAILABLE',
+  'OUTPUT_DOES_NOT_COVER_WITHDRAWAL',
+  'ARCHIVE_WITHDRAWAL_PROOF_UNAVAILABLE',
+  'PROOF_WITHDRAWAL_MISMATCH',
+  'ETHEREUM_SIMULATION_FAILED',
   'RPC_VERIFICATION_UNAVAILABLE',
   'DBK_TRANSACTION_UNAVAILABLE',
   'WITHDRAWAL_TRANSACTION_NOT_SUCCESSFUL',
@@ -63,13 +85,14 @@ export async function GET(request) {
   }catch(e){return fail(e);}
 }
 export async function POST(request) {
-  try {
+  try{
     const body=await request.json();
-    const action=body?.action;
-    if(!['prove','finalize','start'].includes(action)) return json({ok:false,error:'Unsupported operation'},400);
-    let tx;
-    if(action==='start') return json({ok:false,error:'New DBK withdrawals are temporarily disabled until the direct recovery flow is validated.'},409);
-    else return json({ok:false,error:'On-chain signature actions are temporarily disabled while the MessagePassed recovery path is validated.'},409);
-    return json({ok:true,transaction:tx});
+    if(body?.action==='start')return json({ok:false,error:'New DBK withdrawals are disabled. Use an existing withdrawal transaction.'},409);
+    if(!['prove','finalize'].includes(body?.action))return json({ok:false,error:'Unsupported operation'},400);
+    if(!validHash(body?.hash)||!validAddress(body?.address))return json({ok:false,error:'Invalid tx hash / address'},400);
+    const transaction=await prepareVerifiedRecovery({
+      hash:body.hash,address:body.address,action:body.action
+    });
+    return json({ok:true,transaction});
   }catch(e){return fail(e);}
 }

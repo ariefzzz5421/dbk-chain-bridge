@@ -164,6 +164,7 @@ function AppInner(){
   try{
    const data=await api('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,address,hash:hash.trim(),amount:amount.trim()})});
    const tx=data.transaction;
+   if(!tx.simulated || tx.action!==action || tx.recipient?.toLowerCase()!==address.toLowerCase())throw new Error('Server verification or simulation is missing. Transaction blocked.');
    if(tx.chainId!==1&&tx.chainId!==20240603)throw new Error('Invalid network requested.');
    if((action!=='start'&&tx.to.toLowerCase()!==CONTRACT.toLowerCase())||
       (action==='start'&&!['0x4200000000000000000000000000000000000010','0x4200000000000000000000000000000000000007'].includes(tx.to.toLowerCase())))
@@ -191,7 +192,7 @@ function AppInner(){
    // Revalidate server-side status before signing; status may have changed since preparation.
    const checked=await api('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:pending.action,address,hash:pending.originHash,amount:pending.amount})});
    const current=checked.transaction;
-   if(current.to.toLowerCase()!==pending.to.toLowerCase()||current.data!==pending.data||current.value!==pending.value)throw new Error('Withdrawal calldata changed. Review again.');
+   if(!current.simulated||current.action!==pending.action||current.withdrawalHash!==pending.withdrawalHash||current.to.toLowerCase()!==pending.to.toLowerCase()||current.data!==pending.data||current.value!==pending.value)throw new Error('Withdrawal calldata changed. Review again.');
    const raw={from:address,to:pending.to,data:pending.data,value:pending.value};
    await provider.request({method:'eth_estimateGas',params:[raw]});
    const sent=await provider.request({method:'eth_sendTransaction',params:[raw]});
@@ -273,10 +274,12 @@ function AppInner(){
         {!status.recipientIsWallet&&<p className="under-button-note bad">Withdrawal recipient does not match connected wallet. Transaction actions disabled.</p>}
       </div>}
       <div className="timeline animated-timeline">{STEPS.map((s,i)=><div className={'step '+(i<statusView.step?'done':i===statusView.step?'active':'future')} key={s.name}><div className="step-circle">{i<statusView.step?<Check size={15}/>:String(i+1).padStart(2,'0')}</div><div><b>{s.name}</b><span>{s.desc}</span></div></div>)}</div>
-      <div className="result-actions">{status.readyToProve&&<p className="under-button-note bad">Prove signing is not available yet. The direct MessagePassed calldata must be audited and tested first.</p>}{status.readyToFinalize&&<p className="under-button-note bad">Finalize signing is not available yet. The direct MessagePassed calldata must be audited and tested first.</p>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
+      <div className="result-actions">{status.readyToProve&&<button className="primary-action" onClick={()=>prepare('prove')} disabled={!!loading}><ShieldCheck size={17}/> {loading==='prepare'?'Simulating on Ethereum…':'Prepare Prove on Ethereum'} <ArrowRight size={17}/></button>}{status.readyToFinalize&&<button className="primary-action" onClick={()=>prepare('finalize')} disabled={!!loading}><Zap size={17}/> {loading==='prepare'?'Simulating on Ethereum…':'Recover funds · Finalize on Ethereum'} <ArrowRight size={17}/></button>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
      </div>}
      {pending&&<div className="tx-review"><div className="review-title"><ShieldCheck size={19}/><div><b>Review unsigned transaction</b><span>Your wallet will ask you to confirm.</span></div></div>
-      <div className="review-row"><span>Action</span><b>{pending.action.toUpperCase()}</b></div><div className="review-row"><span>Network</span><b>{pending.chainId===1?'Ethereum Mainnet':'DBK Chain'}</b></div><div className="review-row"><span>Contract</span><code>{short(pending.to,10)}</code></div><div className="review-row"><span>Transaction value</span><code>{BigInt(pending.value||'0x0').toString()} wei</code></div><div className="review-row"><span>Estimated network fee</span><b>{gasString}</b></div><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>
+      <div className="review-row"><span>Action</span><b>{pending.action.toUpperCase()}</b></div><div className="review-row"><span>Network</span><b>{pending.chainId===1?'Ethereum Mainnet':'DBK Chain'}</b></div><div className="review-row"><span>Contract</span><code>{short(pending.to,10)}</code></div><div className="review-row"><span>Transaction value</span><code>{BigInt(pending.value||'0x0').toString()} wei</code></div><div className="review-row"><span>Estimated network fee</span><b>{gasString}</b></div>
+      {pending.amount&&Number(pending.estimatedGasEth)>=Number(pending.amount)&&<div className="warning compact"><AlertTriangle size={17}/><div><b>Gas may exceed the recovery amount</b><p>Estimated network fee is at least the ETH being recovered. You can cancel without signing.</p></div></div>}
+      <p className="under-button-note">Read-only Ethereum simulation passed before this transaction was prepared. You still need to approve the transaction yourself in your wallet.</p><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>
       <div className="checkline"><input id="confirm-transaction" type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/><label htmlFor="confirm-transaction">I verified the target contract and gas cost. I understand this action uses real funds.</label></div>
       <div className="review-buttons"><button className="ghost-btn" onClick={()=>{setPending(null);setAck(false)}}>Cancel</button><button disabled={!ack||loading==='sign'} className="primary-action" onClick={submit}>{loading==='sign'?<RefreshCw className="spin" size={16}/>:<Wallet size={17}/>} {loading==='sign'?'Waiting for wallet…':'Confirm in wallet'}</button></div>
      </div>}

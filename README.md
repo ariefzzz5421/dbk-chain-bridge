@@ -69,3 +69,15 @@ Ethereum RPC candidates are also checked against chain ID 1 and the deployed DBK
 The DBK status reader decodes canonical L2 MessagePassed logs with viem and verifies the Ethereum OptimismPortal mapping. A successful finalization event must be cross-checked against an Ethereum RPC receipt. DBK tx 0x5d15ea4a8ba70b021f2e7231a76e9823f6d74646d4924570e99417321ba37f9e has already been finalized with execution success on Ethereum tx 0x722361423bcd99f0e28eeedbcb8e3cd9fa7b32449ff45b4bc4b0de29183686f0. It needs no further on-chain bridge action.
 
 IMPORTANT: This site is currently a read-only recovery status tool. New withdrawals and Prove/Finalize signing are blocked until the direct withdrawal encoder is audited and end-to-end tested. An RPC health indicator must not be interpreted as withdrawal claimability.
+
+
+## L1 recovery signing (Prove / Finalize)
+After connecting the original wallet, select a verified DBK withdrawal.
+- Already finalized: no action; confirm the L1 \`WithdrawalFinalized(success)\` receipt.
+- Ready to prove: derive a proof from an appropriate historical DBK state root and L1 output oracle (legacy Portal v2), encode the documented L1 \`proveWithdrawalTransaction\` call.
+- Challenge period: wait. Neither step can be skipped.
+- Ready to finalize: encode \`finalizeWithdrawalTransaction\`, which releases the funds if its EVM execution succeeds.
+- Before showing an unsigned transaction, the backend re-verifies the connected wallet as recipient, the original event and hash, target portal and status; it runs an Ethereum \`eth_call\` and \`eth_estimateGas\`. Failing either prevents signing. The frontend re-fetches the unsigned transaction and checks exact calldata before broadcasting through the user's own wallet. It never handles a seed phrase or server-side signer.
+- New L2 withdrawals stay disabled. Portal v3+ proof generation is rejected until independently tested. Existing finalized transactions cannot be replayed.
+- A successful build/status lookup alone is not an end-to-end proof of a future pending withdrawal. Always review fee estimates, wallet prompts and actual L1 receipts.
+

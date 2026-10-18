@@ -84,3 +84,20 @@
 .recovered-banner p,.recovery-banner p{font-size:11px;line-height:1.65;color:#a9cdbc;margin:5px 0 0}
 .recovery-banner p{color:#b9b0d0}
 .candidate .candidate-status-complete{color:#80e4ad}
+
+/* Immediate feedback beneath a discovered transaction; only statuses from DBK+L1 can enable signing. */
+.candidate-selected-panel{margin-top:10px;padding:16px;border-radius:11px;background:#181927;border:1px solid #4d4567;color:#ded9f0;animation:status-entrance .22s ease-out both}
+.selected-summary{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.selected-summary>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.selected-summary b{font-size:16px;font-weight:750}
+.selected-summary small{font-size:11px;color:#a7a6bd;overflow-wrap:anywhere}
+.selected-description{color:#b6b2c7;font-size:12px;line-height:1.7;margin:12px 0}
+.selected-actions{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.selected-primary,.selected-secondary{border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 13px;font-weight:800;font-size:12px;text-decoration:none;transition:filter .2s}
+.selected-primary{background:linear-gradient(120deg,#ad92fe,#8f7af0);color:#130e29;border:1px solid #b7a0ff}
+.selected-primary:hover{filter:brightness(1.13);color:#130e29}
+.selected-secondary{background:transparent;border:1px solid #60567d;color:#d0c4f7}
+.selected-primary:disabled,.selected-secondary:disabled{opacity:.5;cursor:not-allowed}
+.candidate-list .candidate{cursor:pointer}
+#withdrawal-result,#transaction-review{scroll-margin-top:20px}
+@media(max-width:540px){.selected-actions>*{width:100%}.candidate-selected-panel{padding:13px}}

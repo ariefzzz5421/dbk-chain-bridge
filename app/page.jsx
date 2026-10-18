@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {PrivyProvider,usePrivy,useWallets} from '@privy-io/react-auth';
 import {defineChain} from 'viem';
 import {mainnet} from 'viem/chains';
@@ -32,7 +32,20 @@ const statusInfo={
 async function api(path,options){
  const response=await fetch('/api/bridge'+path,{cache:'no-store',...options});
  const data=await response.json();
- if(!response.ok||!data.ok)throw new Error(data.error||'Request failed');
+ if(!response.ok||!data.ok){
+   const code=String(data.error||'Request failed');
+   const messages={
+     ALREADY_FINALIZED_NO_ACTION_REQUIRED:'Already recovered on Ethereum — no signature or new transaction is necessary.',
+     NOT_READY_TO_PROVE:'This withdrawal is not yet ready to prove on Ethereum.',
+     NOT_READY_TO_FINALIZE:'The challenge period has not finished; finalization cannot start yet.',
+     ETHEREUM_SIMULATION_FAILED:'The Ethereum bridge simulation reverted. No transaction was sent. Check the withdrawal status again.',
+     ARCHIVE_WITHDRAWAL_PROOF_UNAVAILABLE:'This DBK RPC cannot provide the historical storage proof for this withdrawal.',
+     PORTAL_STATUS_UNAVAILABLE:'The Ethereum portal status could not be verified. Signing is disabled.',
+     WITHDRAWAL_RECIPIENT_MISMATCH:'The withdrawal recipient does not match the connected wallet.',
+     PORTAL_VERSION_NOT_SUPPORTED_FOR_PROVE:'This portal version needs a different proof flow; signing is disabled.',
+   };
+   throw new Error(messages[code]||code);
+ }
  return data;
 }
 function Chip({children,className=''}){return <span className={'chip '+className}>{children}</span>}
@@ -74,6 +87,9 @@ function AppInner(){
  const [receiptAction,setReceiptAction]=useState('');
  const [execution,setExecution]=useState(null);
  const [receiptState,setReceiptState]=useState('submitted');
+ const resultRef=useRef(null);
+ const reviewRef=useRef(null);
+ const requestIdRef=useRef(0);
  const statusView=status?.status ? statusInfo[status.status]||{step:0,text:status.status.replaceAll('_',' '),tone:'waiting',desc:'Review this message state before acting.'}:null;
  const dbkLive=!!health?.dbk?.ok&&!!health?.dbk?.live;
  const l1Live=!!health?.ethereum?.ok;
@@ -81,6 +97,11 @@ function AppInner(){
  const explorer=receiptChain===1?'https://etherscan.io/tx/':'https://scan.dbkchain.io/tx/';
  useEffect(()=>{refreshHealth()},[]);
  useEffect(()=>{setStatus(null);setPending(null);setReceiptHash('');setError('');setAck(false);},[hash,mode,walletIndex]);
+ useEffect(()=>{
+   if(pending && reviewRef.current){
+     reviewRef.current.scrollIntoView({behavior:'smooth',block:'center'});
+   }
+ },[pending]);
  // Read-only automatic discovery after the existing external wallet connects.
  // There are no approvals or wallet signatures during this scan.
  useEffect(()=>{
@@ -135,14 +156,25 @@ function AppInner(){
  async function refreshHealth(){
   try{const data=await api('?mode=health');setHealth(data.health)}catch(e){setHealth({dbk:{ok:false,error:e.message},ethereum:{ok:false,error:e.message}})}
  }
- async function inspect(candidateHash=hash){
+ async function inspect(candidateHash=hash,{scrollToResult=false}={}){
   if(!address){setError('Connect your original withdrawal wallet first.');return;}
   if(!isHash(candidateHash.trim())){setError('Please enter a valid 0x-prefixed 32-byte DBK transaction hash.');return;}
+  const id=++requestIdRef.current;
   setError('');setLoading('check');setPending(null);
-  try{const data=await api('?mode=status&hash='+encodeURIComponent(candidateHash.trim())+'&address='+encodeURIComponent(address));setStatus(data)}catch(e){setStatus(null);setError(e.message)}finally{setLoading('')}
+  try{
+    const data=await api('?mode=status&hash='+encodeURIComponent(candidateHash.trim())+'&address='+encodeURIComponent(address));
+    if(id!==requestIdRef.current)return;
+    setStatus(data);
+    if(scrollToResult)setTimeout(()=>resultRef.current?.scrollIntoView({behavior:'smooth',block:'center'}),140);
+  }catch(e){if(id===requestIdRef.current){setStatus(null);setError(e.message)}}
+  finally{if(id===requestIdRef.current)setLoading('')}
  }
  function chooseCandidate(candidate){
-  if(!candidate?.hash)return;
+  if(!candidate?.hash || loading==='sign')return;
+  if(status?.hash?.toLowerCase()===candidate.hash.toLowerCase()){
+    resultRef.current?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   setMode('recover');setHash(candidate.hash);
   inspect(candidate.hash);
  }
@@ -232,7 +264,7 @@ function AppInner(){
         <div className="wallet-found"><CheckCircle2 size={15}/><span>Wallet {short(address,8)}</span><span className="readonly-chip">READ ONLY</span></div>
         {discovery.balance!==null&&<p className="balance-note">Indexed DBK wallet balance: <b>{Number(discovery.balance).toLocaleString(undefined,{maximumFractionDigits:8})} ETH</b>. This is not a verified pending withdrawal.</p>}
         {discovery.candidates?.length>0?<><p className="results-caption">{discovery.candidates.length} potential bridge {discovery.candidates.length===1?'transaction':'transactions'} found. Verify each before recovery.</p>
-          <div className="candidate-list">{discovery.candidates.map(candidate=><button key={candidate.hash} onClick={()=>chooseCandidate(candidate)} className={'candidate '+(candidate.hash.toLowerCase()===hash.toLowerCase()?'candidate-selected':'')}>
+          <div className="candidate-list">{discovery.candidates.map(candidate=><button key={candidate.hash} onClick={()=>chooseCandidate(candidate)} disabled={loading==='sign'} aria-label={'View withdrawal status '+candidate.hash} className={'candidate '+(candidate.hash.toLowerCase()===hash.toLowerCase()?'candidate-selected':'')}>
             <span className="candidate-shape"><ArrowUpRight size={16}/></span><span className="candidate-details"><b>{candidate.amount?Number(candidate.amount).toLocaleString(undefined,{maximumFractionDigits:8})+' ETH':'Possible DBK withdrawal'}</b><small>{short(candidate.hash,10)} · {candidate.method}</small><em className={status?.hash===candidate.hash && status?.status==='RELAYED'?'candidate-status-complete':''}>
               {status?.hash===candidate.hash
                 ? status.status==='RELAYED'
@@ -242,6 +274,30 @@ function AppInner(){
                   : 'Bridge status: '+status.status.replaceAll('_',' ').toLowerCase()
                 : 'Unverified candidate · select to check status'}
               </em></span><ArrowRight size={17}/></button>)}</div>
+          {loading==='check'&&<div className="candidate-selected-panel" role="status"><RefreshCw size={17} className="spin"/> Verifying DBK withdrawal and Ethereum portal status…</div>}
+          {status?.hash&&discovery.candidates.some(c=>c.hash.toLowerCase()===status.hash.toLowerCase())&&
+           <div className="candidate-selected-panel">
+            <div className="selected-summary">
+             <div><span className="section-label">VERIFIED WITHDRAWAL</span><b>{status.status==='RELAYED'?'Already recovered':statusView?.text}</b>
+             <small>{Number(status.amount).toLocaleString(undefined,{maximumFractionDigits:12})} ETH · {short(status.recipient,10)}</small></div>
+             {status.status==='RELAYED'?<CheckCircle2 size={24} color="#8ee0b1"/>:<ShieldCheck size={23}/>}
+            </div>
+            {status.status==='RELAYED'?<>
+             <p className="selected-description">{execution?.success===true?'Finalization succeeded on Ethereum. No signature is needed.':execution?.success===false?'The portal finalized this withdrawal but the execution reported failure. Do not sign again without reviewing the L1 receipt.':'Portal finalization confirmed. Checking the Ethereum execution receipt; do not submit another withdrawal.'}</p>
+             <div className="selected-actions">
+              {execution?.txHash&&<a href={'https://etherscan.io/tx/'+execution.txHash} rel="noopener noreferrer" target="_blank" className="selected-primary"><ExternalLink size={15}/> View Ethereum recovery receipt</a>}
+              <button type="button" className="selected-secondary" onClick={()=>resultRef.current?.scrollIntoView({behavior:'smooth',block:'center'})}>View recovery details <ArrowRight size={14}/></button>
+             </div>
+            </>:<>
+             <p className="selected-description">{status.explanation}</p>
+             {status.readyToProve||status.readyToFinalize?
+               <button type="button" className="selected-primary" disabled={!!loading||!!pending} onClick={()=>prepare(status.readyToProve?'prove':'finalize')}>
+                {loading==='prepare'?<RefreshCw size={16} className="spin"/>:<Wallet size={16}/>}
+                {status.readyToProve?'Prove withdrawal · Review gas & sign':'Recover ETH · Review gas & sign'} <ArrowRight size={16}/>
+               </button>:
+               <button type="button" className="selected-secondary" onClick={()=>resultRef.current?.scrollIntoView({behavior:'smooth',block:'center'})}>View reason and next step <ArrowRight size={14}/></button>}
+            </>}
+           </div>}
           </>:<p className="results-caption">No bridge candidates in the indexed transactions scanned. This does <b>not</b> rule out older or contract-mediated withdrawals.</p>}
         <div className="discovery-footer"><span>{discovery.source} · {discovery.scanned} transactions scanned{discovery.partial?' · partial history':''}</span><ButtonLink href={'https://scan.dbkchain.io/address/'+address}>Explorer</ButtonLink></div>
        </div>
@@ -264,7 +320,7 @@ function AppInner(){
       {!canStart&&<p className="under-button-note bad">DBK must be producing recent blocks and Ethereum RPC must be healthy to enable this action.</p>}
      </div>}
      {error&&<div className="error-box" role="alert"><AlertTriangle size={18}/><p>{error}</p><button onClick={()=>setError('')} aria-label="Dismiss">×</button></div>}
-     {status&&mode==='recover'&&<div className="status-result">
+     {status&&mode==='recover'&&<div ref={resultRef} className="status-result" id="withdrawal-result">
       <div className="result-head"><div><div className="section-label">WITHDRAWAL STATUS</div><h3>{statusView?.text}</h3></div><Chip className={'status-'+(statusView?.tone||'waiting')}>{statusView?.tone==='action'?'ACTION REQUIRED':statusView?.tone==='success'?'COMPLETE':'PENDING'}</Chip></div>
       <p>{status?.explanation||statusView?.desc}</p>
       {status?.status==='RELAYED'&&<div className="recovered-banner"><CheckCircle2 size={20}/><div><b>Already finalized — no recovery transaction needed</b><p>This withdrawal has already been finalized on Ethereum. Do not pay gas or submit a duplicate transaction.</p></div></div>}
@@ -286,7 +342,7 @@ function AppInner(){
       <div className="timeline animated-timeline">{STEPS.map((s,i)=><div className={'step '+(i<statusView.step?'done':i===statusView.step?'active':'future')} key={s.name}><div className="step-circle">{i<statusView.step?<Check size={15}/>:String(i+1).padStart(2,'0')}</div><div><b>{s.name}</b><span>{s.desc}</span></div></div>)}</div>
       <div className="result-actions">{status.readyToProve&&<button className="primary-action" onClick={()=>prepare('prove')} disabled={!!loading}><ShieldCheck size={17}/> {loading==='prepare'?'Simulating on Ethereum…':'Prepare Prove on Ethereum'} <ArrowRight size={17}/></button>}{status.readyToFinalize&&<button className="primary-action" onClick={()=>prepare('finalize')} disabled={!!loading}><Zap size={17}/> {loading==='prepare'?'Simulating on Ethereum…':'Recover funds · Finalize on Ethereum'} <ArrowRight size={17}/></button>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
      </div>}
-     {pending&&<div className="tx-review"><div className="review-title"><ShieldCheck size={19}/><div><b>Review unsigned transaction</b><span>Your wallet will ask you to confirm.</span></div></div>
+     {pending&&<div ref={reviewRef} className="tx-review" id="transaction-review"><div className="review-title"><ShieldCheck size={19}/><div><b>Review unsigned transaction</b><span>Your wallet will ask you to confirm.</span></div></div>
       <div className="review-row"><span>Action</span><b>{pending.action.toUpperCase()}</b></div><div className="review-row"><span>Network</span><b>{pending.chainId===1?'Ethereum Mainnet':'DBK Chain'}</b></div><div className="review-row"><span>Contract</span><code>{short(pending.to,10)}</code></div><div className="review-row"><span>Transaction value</span><code>{BigInt(pending.value||'0x0').toString()} wei</code></div><div className="review-row"><span>Estimated network fee</span><b>{gasString}</b></div>
       {pending.amount&&Number(pending.estimatedGasEth)>=Number(pending.amount)&&<div className="warning compact"><AlertTriangle size={17}/><div><b>Gas may exceed the recovery amount</b><p>Estimated network fee is at least the ETH being recovered. You can cancel without signing.</p></div></div>}
       <p className="under-button-note">Simulation passed on Ethereum. Only the connected wallet can approve this transaction. Never enter a seed phrase or private key.</p><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>
@@ -298,7 +354,7 @@ function AppInner(){
       <p>{receiptState==='confirmed'?(receiptAction==='finalize'?'Ethereum transaction was confirmed. Check your wallet balance and the bridge status before treating recovery as complete.':'The transaction mined. Your withdrawal may still need the challenge period and another step.'):receiptState==='failed'?'The receipt reports failure. Do not assume funds were recovered.':'The network has not confirmed this transaction yet. This display tracks the transaction receipt; it does not simulate confirmations.'}</p>
       <div className="receipt-track"><span className="receipt-track-line" style={{width:receiptState==='submitted'?'55%':'100%'}}/></div>
       <div className="receipt-stages"><span className="complete">Broadcast</span><span className={receiptState==='submitted'?'awaiting':'complete'}>Mined</span><span className={receiptAction==='finalize'&&receiptState==='confirmed'?'complete':'awaiting'}>{receiptAction==='finalize'?'Verify receipt':'Next bridge stage'}</span></div>
-      <ButtonLink href={explorer+receiptHash}>View on explorer {short(receiptHash,10)}</ButtonLink><button className="refresh-link" onClick={()=>{reset();refreshHealth()}}>Refresh withdrawal status <RefreshCw size={13}/></button></div></div>}
+      <ButtonLink href={explorer+receiptHash}>View on explorer {short(receiptHash,10)}</ButtonLink><button className="refresh-link" onClick={async()=>{if(receiptHash&&receiptState!=='submitted'){const candidate=hash;setReceiptHash('');await inspect(candidate,{scrollToResult:true});refreshHealth()}else refreshHealth()}}>Refresh withdrawal status <RefreshCw size={13}/></button></div></div>}
      <div className="panel-bottom"><ShieldCheck size={17}/><span>Private keys never leave your wallet. Only documented contracts are permitted.</span></div>
     </div>
     <aside className="sidebar">

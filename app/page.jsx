@@ -221,7 +221,7 @@ function AppInner(){
     <div className="main-panel">
      <div className="panel-top"><div><div className="section-label">01 / BRIDGE CONSOLE</div><h2>Recover to Ethereum</h2></div><Chip className="protocol-chip"><Link2 size={12}/> OP STACK</Chip></div>
      <div className="route"><div className="route-chain"><ChainSymbol type="dbk"/><div><span className="minor">FROM</span><strong>DBK Chain</strong><small>Chain ID 20240603</small></div></div><div className="route-arrow"><span className="bridge-orbit"/><ArrowRight size={20}/></div><div className="route-chain"><ChainSymbol type="eth"/><div><span className="minor">TO</span><strong>Ethereum</strong><small>Mainnet · Chain ID 1</small></div></div></div>
-     <div className="tabs"><button className={mode==='recover'?'selected':''} onClick={()=>setMode('recover')}><ArrowDownLeft size={15}/> Recover withdrawal</button><button className={mode==='new'?'selected':''} onClick={()=>setMode('new')}><Send size={15}/> New withdrawal</button></div>
+     <div className="tabs"><button className={mode==='recover'?'selected':''} onClick={()=>setMode('recover')}><ArrowDownLeft size={15}/> Recover withdrawal</button><button disabled title="New withdrawals remain disabled until a full signing audit is complete"><Send size={15}/> New withdrawal (disabled)</button></div>
      {mode==='recover'?<div className="tab-body">
       <section className="discovery-card" aria-live="polite">
        <div className="discovery-heading"><div><span className="discovery-icon"><Search size={16}/></span><b>Auto-detect wallet activity</b></div>{address&&<button onClick={rescan} disabled={scanBusy} className="scan-refresh"><RefreshCw size={14} className={scanBusy?'spin':''}/> Rescan</button>}</div>
@@ -261,7 +261,7 @@ function AppInner(){
       
       {status?.status==='RELAYED'&&<div className="finalized-evidence">
        <div className="section-label">ETHEREUM EXECUTION</div>
-       {execution?.success===true?<p><CheckCircle2 size={16}/> Finalization event reports successful execution. <ButtonLink href={'https://etherscan.io/tx/'+execution.txHash}>View L1 transaction</ButtonLink></p>:
+       {execution?.success===true?<p><CheckCircle2 size={16}/> ETH withdrawal successfully executed on Ethereum. No additional bridge transaction is required. <ButtonLink href={'https://etherscan.io/tx/'+execution.txHash}>View L1 transaction</ButtonLink></p>:
         execution?.success===false?<p className="under-button-note bad"><AlertTriangle size={16}/> The finalization event reports execution failure. Do not retry blindly.</p>:
         <p><Info size={16}/> Withdrawal marked finalized. Transfer-success event has not been verified; check your Ethereum transaction history before assuming the funds arrived.</p>}
       </div>}
@@ -273,7 +273,7 @@ function AppInner(){
         {!status.recipientIsWallet&&<p className="under-button-note bad">Withdrawal recipient does not match connected wallet. Transaction actions disabled.</p>}
       </div>}
       <div className="timeline animated-timeline">{STEPS.map((s,i)=><div className={'step '+(i<statusView.step?'done':i===statusView.step?'active':'future')} key={s.name}><div className="step-circle">{i<statusView.step?<Check size={15}/>:String(i+1).padStart(2,'0')}</div><div><b>{s.name}</b><span>{s.desc}</span></div></div>)}</div>
-      <div className="result-actions">{status.readyToProve&&<button className="primary-action" onClick={()=>prepare('prove')} disabled={!!loading}><ShieldCheck size={17}/> Prepare Prove <ArrowRight size={17}/></button>}{status.readyToFinalize&&<button className="primary-action" onClick={()=>prepare('finalize')} disabled={!!loading}><Zap size={17}/> Prepare Finalize <ArrowRight size={17}/></button>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
+      <div className="result-actions">{status.readyToProve&&<p className="under-button-note bad">Prove signing is not available yet. The direct MessagePassed calldata must be audited and tested first.</p>}{status.readyToFinalize&&<p className="under-button-note bad">Finalize signing is not available yet. The direct MessagePassed calldata must be audited and tested first.</p>}<ButtonLink href={'https://scan.dbkchain.io/tx/'+hash}>Open on DBK Explorer</ButtonLink></div>
      </div>}
      {pending&&<div className="tx-review"><div className="review-title"><ShieldCheck size={19}/><div><b>Review unsigned transaction</b><span>Your wallet will ask you to confirm.</span></div></div>
       <div className="review-row"><span>Action</span><b>{pending.action.toUpperCase()}</b></div><div className="review-row"><span>Network</span><b>{pending.chainId===1?'Ethereum Mainnet':'DBK Chain'}</b></div><div className="review-row"><span>Contract</span><code>{short(pending.to,10)}</code></div><div className="review-row"><span>Transaction value</span><code>{BigInt(pending.value||'0x0').toString()} wei</code></div><div className="review-row"><span>Estimated network fee</span><b>{gasString}</b></div><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>

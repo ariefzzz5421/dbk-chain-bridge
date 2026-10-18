@@ -62,3 +62,10 @@ Unaudited recovery tool. No transaction should be signed without independent ver
 A fixed list of DBK RPC candidates is tested server-side: the official endpoint, Thirdweb, RouteMesh, and an optional `DBK_ARCHIVE_RPC_URL` provided by the operator. Their endpoints are *candidates*, not verified service guarantees. The server checks `eth_chainId`, the latest block timestamp, the old withdrawal transaction receipt and `eth_getProof` at the historical receipt block. A viable historical RPC can help inspect a stopped chain but cannot restart its sequencer or publish missing state commitments. `Prove` requires archival proof support and protocol status checks; `Finalize` also requires a verified message status. An explorer index alone is insufficient for either action.
 
 Ethereum RPC candidates are also checked against chain ID 1 and the deployed DBK OptimismPortal proxy code. Public API replies never expose RPC credentials. DBK artwork is based on the user-provided image and stored as `public/dbk-logo.webp`.
+
+
+## Verified recovery evidence and signing safety
+
+The DBK status reader decodes canonical L2 MessagePassed logs with viem and verifies the Ethereum OptimismPortal mapping. A successful finalization event must be cross-checked against an Ethereum RPC receipt. DBK tx 0x5d15ea4a8ba70b021f2e7231a76e9823f6d74646d4924570e99417321ba37f9e has already been finalized with execution success on Ethereum tx 0x722361423bcd99f0e28eeedbcb8e3cd9fa7b32449ff45b4bc4b0de29183686f0. It needs no further on-chain bridge action.
+
+IMPORTANT: This site is currently a read-only recovery status tool. New withdrawals and Prove/Finalize signing are blocked until the direct withdrawal encoder is audited and end-to-end tested. An RPC health indicator must not be interpreted as withdrawal claimability.

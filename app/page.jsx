@@ -26,7 +26,7 @@ const statusInfo={
  READY_TO_PROVE:{step:1,text:'Ready to prove',tone:'action',desc:'You may prepare the Prove transaction on Ethereum.'},
  IN_CHALLENGE_PERIOD:{step:2,text:'Challenge period',tone:'waiting',desc:'The proof has been submitted. Wait until the challenge period is over.'},
  READY_FOR_RELAY:{step:3,text:'Ready to finalize',tone:'action',desc:'You may finalize the withdrawal to Ethereum.'},
- RELAYED:{step:4,text:'Withdrawal completed',tone:'success',desc:'OptimismPortal reports the withdrawal as finalized.'},
+ RELAYED:{step:4,text:'Finalized on Ethereum',tone:'success',desc:'OptimismPortal reports this withdrawal as finalized. Finalization success still needs separate verification.'},
  STATUS_UNVERIFIED:{step:0,text:'Withdrawal found — portal status unverified',tone:'waiting',desc:'The DBK event was verified, but the L1 bridge status could not be confirmed. Signing is disabled.'},
 };
 async function api(path,options){
@@ -72,6 +72,7 @@ function AppInner(){
  const [discovery,setDiscovery]=useState(null);
  const [scanBusy,setScanBusy]=useState(false);
  const [receiptAction,setReceiptAction]=useState('');
+ const [execution,setExecution]=useState(null);
  const [receiptState,setReceiptState]=useState('submitted');
  const statusView=status?.status ? statusInfo[status.status]||{step:0,text:status.status.replaceAll('_',' '),tone:'waiting',desc:'Review this message state before acting.'}:null;
  const dbkLive=!!health?.dbk?.ok&&!!health?.dbk?.live;
@@ -121,7 +122,16 @@ function AppInner(){
    const interval=setInterval(checkReceipt,12000);
    return ()=>{stopped=true;clearInterval(interval);};
  },[receiptHash,receiptChain,address]);
- const gasString=useMemo(()=>pending?.estimatedGasEth?Number(pending.estimatedGasEth).toFixed(7)+' ETH':'Unavailable', [pending]);
+
+ useEffect(()=>{
+  if(status?.status!=='RELAYED'||!address||!hash){setExecution(null);return;}
+  let canceled=false;
+  api('?mode=execution&hash='+encodeURIComponent(hash)+'&address='+encodeURIComponent(address))
+   .then(result=>{if(!canceled)setExecution(result)})
+   .catch(()=>{if(!canceled)setExecution({success:null,reason:'FINALIZATION_LOG_CHECK_FAILED'})});
+  return ()=>{canceled=true};
+ },[status?.status,address,hash]);
+  const gasString=useMemo(()=>pending?.estimatedGasEth?Number(pending.estimatedGasEth).toFixed(7)+' ETH':'Unavailable', [pending]);
  async function refreshHealth(){
   try{const data=await api('?mode=health');setHealth(data.health)}catch(e){setHealth({dbk:{ok:false,error:e.message},ethereum:{ok:false,error:e.message}})}
  }
@@ -248,6 +258,13 @@ function AppInner(){
      {status&&mode==='recover'&&<div className="status-result">
       <div className="result-head"><div><div className="section-label">WITHDRAWAL STATUS</div><h3>{statusView?.text}</h3></div><Chip className={'status-'+(statusView?.tone||'waiting')}>{statusView?.tone==='action'?'ACTION REQUIRED':statusView?.tone==='success'?'COMPLETE':'PENDING'}</Chip></div>
       <p>{status?.explanation||statusView?.desc}</p>
+      
+      {status?.status==='RELAYED'&&<div className="finalized-evidence">
+       <div className="section-label">ETHEREUM EXECUTION</div>
+       {execution?.success===true?<p><CheckCircle2 size={16}/> Finalization event reports successful execution. <ButtonLink href={'https://etherscan.io/tx/'+execution.txHash}>View L1 transaction</ButtonLink></p>:
+        execution?.success===false?<p className="under-button-note bad"><AlertTriangle size={16}/> The finalization event reports execution failure. Do not retry blindly.</p>:
+        <p><Info size={16}/> Withdrawal marked finalized. Transfer-success event has not been verified; check your Ethereum transaction history before assuming the funds arrived.</p>}
+      </div>}
       {status?.sourceVerified&&<div className="verified-withdrawal-details">
         <div className="detail-row"><span>Withdrawal</span><b>{Number(status.amount).toLocaleString(undefined,{maximumFractionDigits:12})} ETH</b></div>
         <div className="detail-row"><span>Recipient on Ethereum</span><b>{short(status.recipient,10)}</b></div>

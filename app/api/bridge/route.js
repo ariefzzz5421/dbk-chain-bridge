@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { inspectWithdrawalViem } from '../../../lib/withdrawal';
+import { readFinalizationEvidence } from '../../../lib/finalization';
 import { getHealth, resolveWithdrawal, prepareL1Action, prepareNewWithdrawal, validHash, validAddress } from '../../../lib/bridge';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -44,6 +45,15 @@ export async function GET(request) {
   const mode=url.searchParams.get('mode');
   try {
     if(mode==='health') return json({ok:true,health:await getHealth()});
+    if(mode==='execution'){
+      const hash=url.searchParams.get('hash')||'';
+      const address=url.searchParams.get('address')||'';
+      if(!validHash(hash)||!validAddress(address))return json({ok:false,error:'Invalid tx hash / address'},400);
+      const withdrawal=await inspectWithdrawalViem(hash,address);
+      if(withdrawal.status!=='RELAYED')return json({ok:true,finalizedOnL1:false,success:null,reason:'WITHDRAWAL_NOT_FINALIZED'});
+      const evidence=await readFinalizationEvidence(withdrawal.withdrawalHash);
+      return json({ok:true,finalizedOnL1:true,...evidence});
+    }
     if(mode!=='status') return json({ok:false,error:'Invalid operation'},400);
     const hash=url.searchParams.get('hash')||'';
     const address=url.searchParams.get('address')||'';

@@ -47,3 +47,12 @@ Optional Vercel environment variables:
 ## Disclaimer
 
 Unaudited recovery tool. No transaction should be signed without independent verification of the on-chain contract and calldata. Incorrect routing can permanently lose funds. Gas may exceed the recovery value.
+
+## Wallet-first discovery and status animation
+
+- Connect your original EVM wallet through Privy: the site performs an unsigned, read-only Blockscout scan of up to 3 pages of recent outgoing DBK transactions.
+- Bridge-contract interactions are shown as **unverified candidates**. The DBK explorer is an index, **not** proof that a withdrawal can be finalized. A missing candidate does not mean no funds can be recovered; manual transaction hash lookup remains available.
+- DBK explorer legacy API is used as a fallback if its v2 address API is unavailable. The explorer supports only some ETH RPC methods and is NOT used by the Optimism SDK to fabricate proof data.
+- A mined receipt changes the animation to confirmed, but broadcasting or proving is never displayed as final bridge settlement. The challenge period and finalization remain separate.
+- Animated visual elements honor `prefers-reduced-motion`.
+- Ethereum and DBK marks are rendered locally using lightweight SVG; DBK uses a custom stylized monogram.

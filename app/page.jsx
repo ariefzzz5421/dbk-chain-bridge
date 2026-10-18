@@ -236,7 +236,7 @@ function AppInner(){
       <label className="field-label" htmlFor="hash">DBK withdrawal transaction hash <span>Required</span></label>
       <div className="field-group"><Search size={18}/><input id="hash" spellCheck="false" autoComplete="off" value={hash} onChange={e=>setHash(e.target.value)} placeholder="0x... paste your L2 transaction hash"/></div>
       <div className="field-help"><Info size={15}/> Use the original withdrawal transaction on DBK, not the Ethereum transaction.</div>
-      <button className="primary-action" disabled={loading!==''||!address||!isHash(hash.trim())} onClick={inspect}>{loading==='check'?<RefreshCw size={17} className="spin"/>:<Search size={17}/>} {loading==='check'?'Checking withdrawal…':'Check withdrawal status'} <ArrowRight size={17}/></button>
+      <button className="primary-action" disabled={loading!==''||!address||!isHash(hash.trim())} onClick={()=>inspect()}>{loading==='check'?<RefreshCw size={17} className="spin"/>:<Search size={17}/>} {loading==='check'?'Checking withdrawal…':'Check withdrawal status'} <ArrowRight size={17}/></button>
       {!address&&<p className="under-button-note">Connect the wallet that originally initiated the withdrawal.</p>}
       </details>
       <p className="discovery-disclaimer"><Info size={15}/> Explorer candidates are not verified claimable funds. The OP Stack SDK must confirm the exact message status before signing.</p>

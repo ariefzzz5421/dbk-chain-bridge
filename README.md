@@ -68,7 +68,7 @@ Ethereum RPC candidates are also checked against chain ID 1 and the deployed DBK
 
 The DBK status reader decodes canonical L2 MessagePassed logs with viem and verifies the Ethereum OptimismPortal mapping. A successful finalization event must be cross-checked against an Ethereum RPC receipt. DBK tx 0x5d15ea4a8ba70b021f2e7231a76e9823f6d74646d4924570e99417321ba37f9e has already been finalized with execution success on Ethereum tx 0x722361423bcd99f0e28eeedbcb8e3cd9fa7b32449ff45b4bc4b0de29183686f0. It needs no further on-chain bridge action.
 
-IMPORTANT: This site is currently a read-only recovery status tool. New withdrawals and Prove/Finalize signing are blocked until the direct withdrawal encoder is audited and end-to-end tested. An RPC health indicator must not be interpreted as withdrawal claimability.
+IMPORTANT: New L2 withdrawals remain disabled. ETH-only Prove/Finalize transaction preparation is enabled only when the withdrawal message and Ethereum bridge state are verified, the connected wallet is the validated recipient, and both Ethereum call simulation and gas estimation succeed. No future pending withdrawal has yet been end-to-end signed and finalized through this UI; an RPC health indicator does not establish claimability.
 
 
 ## L1 recovery signing (Prove / Finalize)

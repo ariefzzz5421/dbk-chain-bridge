@@ -233,7 +233,15 @@ function AppInner(){
         {discovery.balance!==null&&<p className="balance-note">Indexed DBK wallet balance: <b>{Number(discovery.balance).toLocaleString(undefined,{maximumFractionDigits:8})} ETH</b>. This is not a verified pending withdrawal.</p>}
         {discovery.candidates?.length>0?<><p className="results-caption">{discovery.candidates.length} potential bridge {discovery.candidates.length===1?'transaction':'transactions'} found. Verify each before recovery.</p>
           <div className="candidate-list">{discovery.candidates.map(candidate=><button key={candidate.hash} onClick={()=>chooseCandidate(candidate)} className={'candidate '+(candidate.hash.toLowerCase()===hash.toLowerCase()?'candidate-selected':'')}>
-            <span className="candidate-shape"><ArrowUpRight size={16}/></span><span className="candidate-details"><b>{candidate.amount?Number(candidate.amount).toLocaleString(undefined,{maximumFractionDigits:8})+' ETH':'Possible DBK withdrawal'}</b><small>{short(candidate.hash,10)} · {candidate.method}</small><em>Unverified candidate · status check required</em></span><ArrowRight size={17}/></button>)}</div>
+            <span className="candidate-shape"><ArrowUpRight size={16}/></span><span className="candidate-details"><b>{candidate.amount?Number(candidate.amount).toLocaleString(undefined,{maximumFractionDigits:8})+' ETH':'Possible DBK withdrawal'}</b><small>{short(candidate.hash,10)} · {candidate.method}</small><em className={status?.hash===candidate.hash && status?.status==='RELAYED'?'candidate-status-complete':''}>
+              {status?.hash===candidate.hash
+                ? status.status==='RELAYED'
+                  ? (execution?.success===true?'Recovered on Ethereum · no additional transaction needed':'Finalized on Ethereum · check execution')
+                  : status.readyToFinalize?'Ready to finalize · recover on Ethereum'
+                  : status.readyToProve?'Ready to prove on Ethereum'
+                  : 'Bridge status: '+status.status.replaceAll('_',' ').toLowerCase()
+                : 'Unverified candidate · select to check status'}
+              </em></span><ArrowRight size={17}/></button>)}</div>
           </>:<p className="results-caption">No bridge candidates in the indexed transactions scanned. This does <b>not</b> rule out older or contract-mediated withdrawals.</p>}
         <div className="discovery-footer"><span>{discovery.source} · {discovery.scanned} transactions scanned{discovery.partial?' · partial history':''}</span><ButtonLink href={'https://scan.dbkchain.io/address/'+address}>Explorer</ButtonLink></div>
        </div>
@@ -259,6 +267,8 @@ function AppInner(){
      {status&&mode==='recover'&&<div className="status-result">
       <div className="result-head"><div><div className="section-label">WITHDRAWAL STATUS</div><h3>{statusView?.text}</h3></div><Chip className={'status-'+(statusView?.tone||'waiting')}>{statusView?.tone==='action'?'ACTION REQUIRED':statusView?.tone==='success'?'COMPLETE':'PENDING'}</Chip></div>
       <p>{status?.explanation||statusView?.desc}</p>
+      {status?.status==='RELAYED'&&<div className="recovered-banner"><CheckCircle2 size={20}/><div><b>Already finalized — no recovery transaction needed</b><p>This withdrawal has already been finalized on Ethereum. Do not pay gas or submit a duplicate transaction.</p></div></div>}
+      {(status.readyToProve||status.readyToFinalize)&&<div className="recovery-banner"><ShieldCheck size={18}/><div><b>{status.readyToProve?'Step 1: Prove the withdrawal':'Step 2: Finalize and receive ETH'}</b><p>The application will verify the exact message, simulate the L1 contract call, and show the gas fee before your wallet asks you to sign. You can cancel at any time.</p></div></div>}
       
       {status?.status==='RELAYED'&&<div className="finalized-evidence">
        <div className="section-label">ETHEREUM EXECUTION</div>
@@ -279,7 +289,7 @@ function AppInner(){
      {pending&&<div className="tx-review"><div className="review-title"><ShieldCheck size={19}/><div><b>Review unsigned transaction</b><span>Your wallet will ask you to confirm.</span></div></div>
       <div className="review-row"><span>Action</span><b>{pending.action.toUpperCase()}</b></div><div className="review-row"><span>Network</span><b>{pending.chainId===1?'Ethereum Mainnet':'DBK Chain'}</b></div><div className="review-row"><span>Contract</span><code>{short(pending.to,10)}</code></div><div className="review-row"><span>Transaction value</span><code>{BigInt(pending.value||'0x0').toString()} wei</code></div><div className="review-row"><span>Estimated network fee</span><b>{gasString}</b></div>
       {pending.amount&&Number(pending.estimatedGasEth)>=Number(pending.amount)&&<div className="warning compact"><AlertTriangle size={17}/><div><b>Gas may exceed the recovery amount</b><p>Estimated network fee is at least the ETH being recovered. You can cancel without signing.</p></div></div>}
-      <p className="under-button-note">Read-only Ethereum simulation passed before this transaction was prepared. You still need to approve the transaction yourself in your wallet.</p><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>
+      <p className="under-button-note">Simulation passed on Ethereum. Only the connected wallet can approve this transaction. Never enter a seed phrase or private key.</p><details><summary>Inspect contract and calldata <ChevronDown size={14}/></summary><div className="data-field"><span>To</span><code>{pending.to}</code><span>Data (hex)</span><code>{pending.data}</code></div></details>
       <div className="checkline"><input id="confirm-transaction" type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/><label htmlFor="confirm-transaction">I verified the target contract and gas cost. I understand this action uses real funds.</label></div>
       <div className="review-buttons"><button className="ghost-btn" onClick={()=>{setPending(null);setAck(false)}}>Cancel</button><button disabled={!ack||loading==='sign'} className="primary-action" onClick={submit}>{loading==='sign'?<RefreshCw className="spin" size={16}/>:<Wallet size={17}/>} {loading==='sign'?'Waiting for wallet…':'Confirm in wallet'}</button></div>
      </div>}

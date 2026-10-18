@@ -81,3 +81,6 @@ After connecting the original wallet, select a verified DBK withdrawal.
 - New L2 withdrawals stay disabled. Portal v3+ proof generation is rejected until independently tested. Existing finalized transactions cannot be replayed.
 - A successful build/status lookup alone is not an end-to-end proof of a future pending withdrawal. Always review fee estimates, wallet prompts and actual L1 receipts.
 
+
+### Supported recipient routes
+For safety the wallet-to-Ethereum recovery action only supports verified native ETH messages: (a) an ETH-only direct MessagePassed transfer to the original wallet, or (b) an ETH withdrawal whose decoded L1 CrossDomainMessenger message targets the documented L1StandardBridge with a matching sender, wallet recipient, and ETH amount. Nonstandard contract calls, ERC20 assets and transfers to a different wallet are view-only. Both the DBK transaction sender and decoded recipient must match the connected wallet. All L1 actions are simulated with eth_call and estimateGas before wallet signing. New withdrawals remain disabled.

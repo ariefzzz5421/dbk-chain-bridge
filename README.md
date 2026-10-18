@@ -56,3 +56,9 @@ Unaudited recovery tool. No transaction should be signed without independent ver
 - A mined receipt changes the animation to confirmed, but broadcasting or proving is never displayed as final bridge settlement. The challenge period and finalization remain separate.
 - Animated visual elements honor `prefers-reduced-motion`.
 - Ethereum and DBK marks are rendered locally using lightweight SVG; DBK uses a custom stylized monogram.
+
+## RPC fallback verification and official logo
+
+A fixed list of DBK RPC candidates is tested server-side: the official endpoint, Thirdweb, RouteMesh, and an optional `DBK_ARCHIVE_RPC_URL` provided by the operator. Their endpoints are *candidates*, not verified service guarantees. The server checks `eth_chainId`, the latest block timestamp, the old withdrawal transaction receipt and `eth_getProof` at the historical receipt block. A viable historical RPC can help inspect a stopped chain but cannot restart its sequencer or publish missing state commitments. `Prove` requires archival proof support and protocol status checks; `Finalize` also requires a verified message status. An explorer index alone is insufficient for either action.
+
+Ethereum RPC candidates are also checked against chain ID 1 and the deployed DBK OptimismPortal proxy code. Public API replies never expose RPC credentials. DBK artwork is based on the user-provided image and stored as `public/dbk-logo.webp`.

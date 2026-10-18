@@ -70,3 +70,8 @@
 .receipt-stages .complete{color:#9ff2c4}.receipt-stages .awaiting{color:#a59cba}
 @media(max-width:540px){.discovery-heading{padding:12px}.discovery-body{padding:12px}.candidate{padding:11px}.discovery-footer{align-items:flex-start;flex-direction:column}.receipt-stages{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.bridge-orbit,.route-arrow svg,.scan-radar:before,.scan-radar:after,.scan-shimmer:after,.animated-timeline .step.active .step-circle,.animated-timeline .step.done .step-circle,.success-box,.receipt-track-line{animation:none!important;transition:none!important}}
+
+.chain-symbol.dbk{overflow:hidden;border-radius:50%;background:transparent;box-shadow:0 0 0 1px #ffffff24}
+.dbk-official-logo{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.brand-mark{background:transparent;box-shadow:0 0 18px #65bfad33;border-radius:50%;overflow:hidden}
+.brand-dbk-logo{width:100%;height:100%;object-fit:cover;border-radius:50%}

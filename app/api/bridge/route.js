@@ -21,7 +21,9 @@ const knownSafeErrors = [
   'Invalid address or ETH amount.',
   'Amount must be greater than 0.',
   'Unexpected transaction value',
-  'Unsupported action.'
+  'Unsupported action.',
+  'No verified DBK RPC can provide the historical withdrawal data required for this action.',
+  'No verified Ethereum RPC available.'
 ];
 const fail=(e)=>{
   const message=String(e?.message||'');

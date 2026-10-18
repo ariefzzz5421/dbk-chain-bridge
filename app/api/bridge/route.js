@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server';
+import { createPublicClient, http } from 'viem';
+import { mainnet } from 'viem/chains';
+import { getPortalVersion } from 'viem/op-stack';
+import { resolveEthRpc } from '../../../lib/rpc';
+import { dbkChain,PORTAL } from '../../../lib/withdrawal';
 import { inspectWithdrawalViem } from '../../../lib/withdrawal';
 import { prepareVerifiedRecovery } from '../../../lib/recovery-actions';
 import { readFinalizationEvidence } from '../../../lib/finalization';
@@ -68,6 +73,16 @@ export async function GET(request) {
   const mode=url.searchParams.get('mode');
   try {
     if(mode==='health') return json({ok:true,health:await getHealth()});
+    if(mode==='protocol'){
+      const {result}=await resolveEthRpc();
+      const l1=createPublicClient({chain:mainnet,transport:http(result._url,{timeout:12000,retryCount:0})});
+      try{
+        const version=await getPortalVersion(l1,{targetChain:dbkChain,portalAddress:PORTAL});
+        return json({ok:true,portalVersion:[version.major,version.minor,version.patch].join('.'),
+          legacyProofSupported:version.major===2,
+          note:'Proof signing requires a verified withdrawal status and successful on-chain simulation.'});
+      }catch{return json({ok:true,portalVersion:'unknown',legacyProofSupported:false,note:'Could not verify the OptimismPortal version; Prove remains disabled.'});}
+    }
     if(mode==='execution'){
       const hash=url.searchParams.get('hash')||'';
       const address=url.searchParams.get('address')||'';

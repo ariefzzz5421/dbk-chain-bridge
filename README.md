@@ -31,3 +31,14 @@ Run npm install and npm run dev. Optionally set ETHEREUM_RPC_URL to your trusted
 - ZKcandy project risks: https://l2beat.com/layer2s/projects/zkcandy
 
 Chain logo IPFS CID is taken from ethereum-lists/chains mainnet 320 chain icon entry.
+
+## DBK Chain monitor and existing-withdrawal recovery
+- DBK Chain: chain ID 20240603, official RPC `https://rpc.mainnet.dbkchain.io/`, fallback thirdweb and RouteMesh.
+- Read-only `GET /api/networks` independently probes ZK candy (320), DBK (20240603) and Ethereum (1), validates latest block timestamp and on-chain bytecode of the documented DBK OptimismPortal and L2OutputOracle. It never mislabels a responding RPC as a functioning bridge.
+- `GET /api/dbk?mode=balance&address=0x...` reads native ETH on DBK from a verified, fresh endpoint.
+- `GET /api/dbk?mode=status&address=0x...&hash=0x...` checks canonical DBK L2 MessagePassed log, sender, Ethereum recipient, withdrawal hash, and OP Stack L1 status with viem.
+- `POST /api/dbk` supports **prove/finalize only for an existing valid withdrawal**, and only if on-chain status allows it, L1 contracts match the official documentation, and an Ethereum simulation passes. Transaction data goes to the documented Ethereum OptimismPortal with zero ETH value, and is revalidated before the user signs in their own wallet.
+- **New DBK withdrawal initiation remains disabled** until all stages are thoroughly validated. Chain block production alone is not exit readiness.
+- No seed phrases, private keys, arbitrary user-provided RPCs/contracts, or custody.
+
+DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk

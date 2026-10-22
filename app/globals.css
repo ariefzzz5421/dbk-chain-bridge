@@ -21,3 +21,42 @@ footer{border-top:1px solid #ffffff19;display:flex;justify-content:space-between
 .rpc-details>b{display:block;color:#91a5c4;font-size:11px;margin-bottom:10px}
 .rpc-details>div{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:7px 0;font-size:11px;color:#91a5c4}
 .rpc-details>div strong{font-size:11px}
+
+/* Dual-chain switcher, RPC history, and DBK OP Stack recovery */
+.chain-select{display:flex;gap:10px;margin:0 0 22px}
+.chain-select button{flex:1;background:#141e33;color:#aab7d2;border:1px solid #344261;border-radius:12px;padding:17px;text-align:left;font:700 15px 'Space Grotesk';transition:background .2s}
+.chain-select button.selected{background:#2c3661;color:#fff;border-color:#797ae5}
+.chain-select button small{display:block;font:500 11px 'DM Sans';color:#a0abc7;margin-top:6px}
+.health-overview{margin-bottom:24px;border:1px solid #ffffff20;background:linear-gradient(125deg,#131e33,#10192a);padding:23px;border-radius:17px}
+.health-title{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:18px}
+.health-title h2{font:700 22px 'Space Grotesk';margin:9px 0}
+.health-title p{font-size:12px;color:#9aaac4;line-height:1.6;margin:0}
+.health-refresh{width:auto;padding:0 17px;white-space:nowrap}
+.network-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.network-record{background:#0c1627;border:1px solid #ffffff1c;border-radius:12px;padding:16px;min-width:0}
+.network-main{display:flex;align-items:start;justify-content:space-between;gap:9px}
+.network-main strong{font-size:13px;display:block}
+.network-main small{font-size:10px;color:#7489ab;display:block;margin-top:5px}
+.network-main>b{font-size:10px;text-align:right}
+.network-facts{margin-top:14px;display:flex;flex-direction:column;gap:7px;color:#95a9c6;font-size:11px}
+.network-endpoints{border-top:1px solid #ffffff1b;margin-top:14px;padding-top:12px}
+.network-endpoints summary{cursor:pointer;color:#afbaf1;font-size:11px}
+.network-endpoints>div{display:flex;justify-content:space-between;gap:8px;padding:8px 0;font-size:10px;border-bottom:1px solid #ffffff0c}
+.network-endpoints>div span:last-child{text-align:right;overflow-wrap:anywhere;max-width:65%}
+.amber{color:#efc083}
+.exit-audit{background:#182341;border:1px solid #ffffff1b;border-radius:11px;margin-top:14px;padding:15px}
+.exit-audit>div:first-child{display:flex;align-items:center;gap:8px;font-size:12px}
+.exit-audit>div:first-child svg{color:#9e9afa}
+.exit-info{display:flex;gap:18px;flex-wrap:wrap;margin-top:11px;font-size:11px;color:#9baac9}
+.exit-info b{color:#e5eaff}
+.exit-audit p,.diag-time{color:#91a4c0;font-size:11px;line-height:1.65}
+.exit-audit .links{display:flex;gap:16px;flex-wrap:wrap;color:#b0afff;font-size:11px}
+.exit-audit a{display:flex;align-items:center;gap:4px}
+.diag-time{margin:13px 0 0}
+.dbk-symbol{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#ba96ff,#5444a6);display:grid;place-items:center;color:white;font:700 22px 'Space Grotesk'}
+.dbk-doc{display:flex;align-items:center;gap:7px;font-size:12px;color:#b0b6ff;margin-top:15px}
+.dbk-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:16px}
+.dbk-actions .secondary{margin:0;padding:9px;font-size:11px}
+.dbk-actions button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:850px){.network-grid{grid-template-columns:1fr}.health-title{align-items:flex-start;flex-direction:column}.health-refresh{width:100%}}
+@media(max-width:600px){.chain-select button{font-size:13px;padding:13px}.health-overview{padding:17px}.health-title h2{font-size:19px}.exit-info{flex-direction:column;gap:8px}}

@@ -1,6 +1,6 @@
 {
-  "name": "dbk-recovery-bridge",
-  "version": "0.1.0",
+  "name": "stuck-bridge-fund",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,13 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
-    "@eth-optimism/sdk": "3.3.3",
-    "@privy-io/react-auth": "^3.50.0",
-    "ethers": "^5.7.2",
+    "ethers": "^6.15.0",
+    "zksync-ethers": "6.20.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "viem": "^2.37.0"
+    "react-dom": "^19.1.1"
   }
 }

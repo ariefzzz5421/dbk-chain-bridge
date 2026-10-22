@@ -4,27 +4,72 @@ import { Provider, utils } from 'zksync-ethers';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const RPCS=['https://rpc.zkcandy.io','https://320.rpc.thirdweb.com'];
-const ETH_RPCS=[process.env.ETHEREUM_RPC_URL,'https://ethereum-rpc.publicnode.com','https://eth.llamarpc.com'].filter(Boolean);
-const BASE='0x000000000000000000000000000000000000800a';
-const ABI=new ethers.Interface(['function withdraw(address _l1Receiver)']);
-const addr=s=>ethers.isAddress(s||'');
-const hash=s=>/^0x[a-f0-9]{64}$/i.test(s||'');
-const err=e=>String(e?.shortMessage||e?.message||'Unavailable').slice(0,300);
-const timeout=(p,ms=6500)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(Error('RPC timeout')),ms))]);
+const RPCS = [
+  { url: process.env.ZKCANDY_RPC_URL, label: 'Configured RPC' },
+  { url: 'https://rpc.zkcandy.io', label: 'Official ZKcandy' },
+  { url: 'https://320.rpc.thirdweb.com', label: 'thirdweb' },
+  { url: 'https://api.uniblock.dev/uni/v1/json-rpc?chainId=320', label: 'Uniblock' },
+].filter(item => item.url);
+const ETH_RPCS = [
+  { url: process.env.ETHEREUM_RPC_URL, label: 'Configured RPC' },
+  { url: 'https://eth.nodeconnect.org', label: 'NodeConnect' },
+  { url: 'https://ethereum-rpc.publicnode.com', label: 'PublicNode' },
+  { url: 'https://eth.llamarpc.com', label: 'LlamaRPC' },
+].filter(item => item.url);
+const BASE = '0x000000000000000000000000000000000000800a';
+const ABI = new ethers.Interface(['function withdraw(address _l1Receiver)']);
+const addr = s => ethers.isAddress(s || '');
+const hash = s => /^0x[a-f0-9]{64}$/i.test(s || '');
+const err = e => String(e?.shortMessage || e?.message || 'Unavailable').slice(0, 300);
+const timeout = (p, ms = 7000) => Promise.race([
+  p, new Promise((_, reject) => setTimeout(() => reject(Error('RPC timeout')), ms)),
+]);
 
-async function zk(){
- for(const url of RPCS){
-  try{const p=new Provider(url);if(Number((await timeout(p.getNetwork())).chainId)!==320)continue;
-    await timeout(p.getBlockNumber());return p;}catch(_){}
- }
- throw Error('ZKCANDY_RPC_UNAVAILABLE');
+async function rpcCall(url, method, params = []) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5500);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: ctrl.signal,
+      cache: 'no-store',
+    });
+    if (!response.ok) throw Error('HTTP ' + response.status);
+    const data = await response.json();
+    if (data.error || typeof data.result !== 'string') throw Error(data.error?.message || 'Invalid JSON-RPC response');
+    return data.result;
+  } finally { clearTimeout(timer); }
 }
-async function ethereum(){
- for(const url of ETH_RPCS){
-  try{const p=new ethers.JsonRpcProvider(url,1,{staticNetwork:true});await timeout(p.getBlockNumber());return p;}catch(_){}
- }
- throw Error('ETHEREUM_RPC_UNAVAILABLE');
+async function selectRpc(list, chainId) {
+  // Probe independently and in parallel. A dead primary endpoint cannot mask a working fallback.
+  const checked = await Promise.all(list.map(async entry => {
+    try {
+      if (!/^https:\/\//.test(entry.url)) throw Error('HTTPS endpoint required');
+      const actual = Number(BigInt(await rpcCall(entry.url, 'eth_chainId')));
+      if (actual !== chainId) throw Error('Wrong chain ID');
+      const block = Number(BigInt(await rpcCall(entry.url, 'eth_blockNumber')));
+      if (!Number.isSafeInteger(block) || block < 0) throw Error('Invalid block number');
+      return { ...entry, block, ok: true };
+    } catch (error) {
+      return { label: entry.label, ok: false, error: err(error) };
+    }
+  }));
+  const chosen = checked.find(entry => entry.ok);
+  return { chosen: chosen || null, checked };
+}
+const zkProvider = entry => new Provider(entry.url);
+const ethProvider = entry => new ethers.JsonRpcProvider(entry.url, 1, { staticNetwork: true });
+async function zk() {
+  const result = await selectRpc(RPCS, 320);
+  if (!result.chosen) throw Error('ZKCANDY_RPC_UNAVAILABLE');
+  return zkProvider(result.chosen);
+}
+async function ethereum() {
+  const result = await selectRpc(ETH_RPCS, 1);
+  if (!result.chosen) throw Error('ETHEREUM_RPC_UNAVAILABLE');
+  return ethProvider(result.chosen);
 }
 async function settlement(z,l){
  try{
@@ -47,13 +92,30 @@ async function settlement(z,l){
 export async function GET(req){
  const q=new URL(req.url).searchParams,mode=q.get('mode')||'health';
  try{
-  const p=await zk();
-  if(mode==='health'){
-    const latestBlock=await p.getBlockNumber();
-    let l1Online=false,s={recentSettlement:false,reason:'Ethereum RPC unreachable'};
-    try{const l=await ethereum();l1Online=true;s=await settlement(p,l)}catch(_){}
-    return NextResponse.json({ok:true,chainId:320,latestBlock,ethereumOnline:l1Online,withdrawalsEnabled:l1Online&&s.recentSettlement,...s});
+  if (mode === 'health') {
+    // Each chain is checked separately so a ZKcandy outage does not falsely label L1 as offline.
+    const [zResult, eResult] = await Promise.all([selectRpc(RPCS, 320), selectRpc(ETH_RPCS, 1)]);
+    const z = zResult.chosen, e = eResult.chosen;
+    let proof = { recentSettlement: false, reason: z && e
+      ? 'L1 batch execution not yet verified'
+      : 'Both ZKcandy and Ethereum RPC access are needed to verify L1 execution' };
+    if (z && e) proof = await settlement(zkProvider(z), ethProvider(e));
+    return NextResponse.json({
+      ok: true,
+      zkcandyOnline: Boolean(z),
+      ethereumOnline: Boolean(e),
+      chainId: 320,
+      zkcandyRpc: z?.label || null,
+      ethereumRpc: e?.label || null,
+      latestBlock: z?.block ?? null,
+      ethereumBlock: e?.block ?? null,
+      zkcandyChecks: zResult.checked.map(({label,ok,error}) => ({label,ok,error})),
+      ethereumChecks: eResult.checked.map(({label,ok,error}) => ({label,ok,error})),
+      withdrawalsEnabled: Boolean(z && e && proof.recentSettlement),
+      ...proof,
+    });
   }
+  const p = await zk();
   const address=q.get('address');
   if(!addr(address))throw Error('INVALID_WALLET');
   if(mode==='balance')return NextResponse.json({ok:true,balance:ethers.formatEther(await p.getBalance(address))});

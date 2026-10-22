@@ -13,3 +13,11 @@ aside{display:flex;flex-direction:column;gap:18px}.side-panel{padding:25px}.side
 .how{text-align:center;padding:85px 0 75px}.how h2{font:700 33px 'Space Grotesk';margin:13px 0 30px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;text-align:left}.step{padding:26px;border:1px solid #ffffff1a;background:#151d30bb;border-radius:14px}.step>span{font:700 25px 'Space Grotesk';color:#8d8af5}.step h3{font-size:16px;margin:18px 0 8px}.step p{color:#9faec6;font-size:12px;line-height:1.7;margin:0}
 footer{border-top:1px solid #ffffff19;display:flex;justify-content:space-between;gap:13px;padding:27px 0 39px;font-size:11px;color:#7e90ac}footer div{display:flex;gap:20px}
 @media(max-width:930px){.header nav{display:none}.workspace{grid-template-columns:1fr}aside{display:grid;grid-template-columns:repeat(2,1fr)}}@media(max-width:630px){.shell{padding:0 15px}.header{height:74px}.brand strong{font-size:12px}.brand small{font-size:8px}.connect{padding:11px;font-size:11px}.hero{padding:49px 0 41px}.hero h1{letter-spacing:-1.4px}.hero>p{font-size:13px}.pills{gap:12px;font-size:10px}.panel{padding:19px}.panel h2{font-size:19px}.route{padding:14px 9px;gap:4px}.route .coin{width:37px;height:37px}.chain{gap:7px}.chain strong{font-size:12px}.chain small,.chain span:not(.coin){font-size:9px}.arrow{width:25px;height:25px}.tabs button{font-size:11px}aside{display:flex}.steps{grid-template-columns:1fr}.how{padding:65px 0}footer{flex-direction:column;line-height:1.7}}
+
+
+/* RPC diagnostics and explicit read-only balance source */
+.balance-source{font-size:10px;letter-spacing:0;font-weight:500;color:#8795b4}
+.rpc-details{margin-top:15px;border-top:1px solid #ffffff18;padding-top:15px}
+.rpc-details>b{display:block;color:#91a5c4;font-size:11px;margin-bottom:10px}
+.rpc-details>div{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:7px 0;font-size:11px;color:#91a5c4}
+.rpc-details>div strong{font-size:11px}

@@ -2,6 +2,8 @@
 import {useEffect,useState} from 'react';
 import {ethers} from 'ethers';
 import {Provider,L1Signer} from 'zksync-ethers';
+import DbkRecovery from './components/DbkRecovery';
+import NetworkMonitor from './components/NetworkMonitor';
 import {Wallet,ArrowRight,ArrowUpRight,ShieldCheck,LockKeyhole,Activity,RefreshCcw,ExternalLink,AlertTriangle,CheckCircle2,Info} from 'lucide-react';
 
 const BASE='0x000000000000000000000000000000000000800a';
@@ -51,6 +53,7 @@ export default function Home(){
  const [status,setStatus]=useState(null),[preview,setPreview]=useState(null);
  const [ack,setAck]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[tx,setTx]=useState(null);
  const [walletStatus,setWalletStatus]=useState(null),[balanceSource,setBalanceSource]=useState('');
+ const [activeChain,setActiveChain]=useState('zkcandy');
  const wallet=typeof window!=='undefined'?window.ethereum:null;
  useEffect(()=>{
    refresh();
@@ -146,15 +149,20 @@ export default function Home(){
  const ready=!!health?.zkcandyOnline&&!!health?.ethereumOnline&&!!health?.withdrawalsEnabled;
  return <div className="app">
  <div className="ambient ambient1"/><div className="ambient ambient2"/>
- <header className="header shell"><div className="brand"><ChainIcon/><div><strong>STUCK <em>BRIDGE</em> FUND</strong><small>ZKcandy Recovery Console</small></div></div>
+ <header className="header shell"><div className="brand"><ChainIcon/><div><strong>STUCK <em>BRIDGE</em> FUND</strong><small>ZK candy + DBK Chain recovery</small></div></div>
  <nav><a href="#bridge">Bridge</a><a href="#how">How it works</a><Ext href="https://docs.zksync.io/zksync-protocol/rollup/bridging-assets">Official docs</Ext></nav>
  <button onClick={connect} className="connect"><Wallet size={16}/>{address?short(address):'Connect Wallet'}</button></header>
  <main className="shell">
   <section className="hero"><div className="eyebrow"><i/> ZK STACK · SELF-CUSTODIAL RECOVERY</div>
     <h1>Move funds <span>back to Ethereum.</span></h1>
-    <p>Use the native ZKsync withdrawal flow from ZKcandy to Ethereum. Inspect your funds, check L1 settlement, and sign only transactions you approve.</p>
+    <p>Inspect ZK candy and DBK Chain RPCs, balances, and withdrawal proofs before attempting any self-custodial recovery. Different chains require different protocol checks.</p>
     <div className="pills"><span><ShieldCheck size={15}/> Self-custodial</span><span><LockKeyhole size={15}/> No seed phrases</span><span><Activity size={15}/> On-chain checks</span></div></section>
-  <div className="workspace" id="bridge">
+  <div className="chain-select" role="tablist" aria-label="Choose recovery network">
+    <button role="tab" aria-selected={activeChain==='zkcandy'} className={activeChain==='zkcandy'?'selected':''} onClick={()=>{setActiveChain('zkcandy');setError('')}}>ZK candy <small>ZK Stack · Chain 320</small></button>
+    <button role="tab" aria-selected={activeChain==='dbk'} className={activeChain==='dbk'?'selected':''} onClick={()=>{setActiveChain('dbk');setError('')}}>DBK Chain <small>OP Stack · Chain 20240603</small></button>
+  </div>
+  <NetworkMonitor/>
+  {activeChain==='zkcandy'?<div className="workspace" id="bridge">
    <div className="panel">
     <div className="panel-title"><div><div className="micro">01 / BRIDGE CONSOLE</div><h2>ZK candy to Ethereum</h2></div><span className="tag">ZK STACK</span></div>
     <div className="route"><div className="chain"><ChainIcon/><div><small>FROM</small><strong>ZK candy</strong><span>Chain ID 320</span></div></div><div className="arrow"><ArrowRight size={19}/></div><div className="chain"><ChainIcon/><div><small>TO</small><strong>Ethereum</strong><span>Chain ID 1</span></div></div></div>
@@ -195,7 +203,7 @@ export default function Home(){
     {health?.zkcandyChecks?.length?<div className="rpc-details"><b>Public ZK candy endpoint tests</b>{health.zkcandyChecks.map(check=><div key={check.label}><span>{check.label}</span><strong className={check.ok?'green':'red'}>{check.ok?'Connected':'Failed'}</strong></div>)}</div>:null}
     <p className="hint">Wallet RPC detection is read-only. Only verified L1 batch settlement can enable new withdrawals; an online RPC alone is not enough.</p>
    </div><div className="side-panel safety"><div className="micro">SAFETY RULES</div><h3>Never share</h3><p><ShieldCheck size={16}/> Seed phrase or private keys</p><p><LockKeyhole size={16}/> Recovery fees to a third party</p><p><CheckCircle2 size={16}/> Arbitrary token approvals</p></div></aside>
-  </div>
+  </div>:<DbkRecovery address={address} wallet={wallet}/>}
   <section className="how" id="how"><div className="micro">RECOVERY PROCESS</div><h2>One bridge. Two stages.</h2><div className="steps">{[
    ['01','Initiate on ZKcandy','Native ETH calls the verified L2 BaseToken contract. New withdrawals are blocked if recent L1 execution is missing.'],
    ['02','Wait for L1 proof','The ZKcandy operator must execute the batch and expose a withdrawal proof. An RPC response alone is insufficient.'],

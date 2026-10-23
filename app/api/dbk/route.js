@@ -3,7 +3,7 @@ import { createPublicClient, http, formatEther, isAddress } from 'viem';
 import { getNetworkRpc } from '../../../lib/network-health';
 import { dbkChain, inspectWithdrawalViem, PORTAL } from '../../../lib/withdrawal';
 import { prepareVerifiedRecovery } from '../../../lib/recovery-actions';
-import { prepareNativeDbkETH } from '../../../lib/dbk-native-start';
+import { prepareNativeDbkETH, dbkExitPreflight } from '../../../lib/dbk-native-start';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
@@ -35,6 +35,17 @@ function failure(e){
 export async function GET(request){
  const q=new URL(request.url).searchParams;
  const mode=q.get('mode'),address=q.get('address');
+ if(mode==='preflight'){
+  try{
+   const check=await dbkExitPreflight();
+   return json({ok:true,canPrepareNewWithdrawal:true,outputAgeSeconds:check.outputAgeSeconds,
+     lastL1OutputIndex:check.oracleOutputIndex,blockLag:check.blockLag,
+     disclaimer:'A valid old output does not ensure future proof production, withdrawal finalization, or payout.'});
+  }catch(e){
+   const known=whitelist.has(String(e?.message||''))?String(e.message):'DBK_PREFLIGHT_UNAVAILABLE';
+   return json({ok:true,canPrepareNewWithdrawal:false,reason:known});
+  }
+ }
  if(!isAddress(address||''))return json({ok:false,error:'INVALID_WALLET_ADDRESS'},400);
  try{
   if(mode==='balance'){

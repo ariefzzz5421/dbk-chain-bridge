@@ -3,6 +3,7 @@ import { createPublicClient, http, formatEther, isAddress } from 'viem';
 import { getNetworkRpc } from '../../../lib/network-health';
 import { dbkChain, inspectWithdrawalViem, PORTAL } from '../../../lib/withdrawal';
 import { prepareVerifiedRecovery } from '../../../lib/recovery-actions';
+import { prepareNativeDbkETH, dbkExitPreflight } from '../../../lib/dbk-native-start';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
@@ -20,7 +21,10 @@ const whitelist=new Set([
  'PORTAL_VERSION_NOT_SUPPORTED_FOR_PROVE','OUTPUT_ROOT_NOT_AVAILABLE',
  'OUTPUT_DOES_NOT_COVER_WITHDRAWAL','ARCHIVE_WITHDRAWAL_PROOF_UNAVAILABLE',
  'PROOF_WITHDRAWAL_MISMATCH','ETHEREUM_SIMULATION_FAILED','ETH_RECEIVER_ROUTE_UNSUPPORTED',
- 'DBK_CHAIN_STALE','DBK_RPC_UNAVAILABLE','ETHEREUM_RPC_UNAVAILABLE'
+ 'DBK_CHAIN_STALE','DBK_RPC_UNAVAILABLE','ETHEREUM_RPC_UNAVAILABLE',
+ 'DBK_RPC_OR_LATEST_BLOCK_UNAVAILABLE','DOCUMENTED_L1_CONTRACTS_NOT_VERIFIED','L1_OUTPUT_INDEX_UNAVAILABLE',
+ 'L1_OUTPUT_PROPOSAL_UNAVAILABLE','DBK_L1_OUTPUT_STALE_OR_UNVERIFIED','DBK_WITHDRAWAL_SIMULATION_FAILED',
+ 'INSUFFICIENT_DBK_ETH_FOR_GAS','INSUFFICIENT_DBK_ETH_INCLUDING_GAS','INVALID_AMOUNT_OR_WALLET','INVALID_AMOUNT'
 ]);
 function failure(e){
  const message=String(e?.message||'');
@@ -31,6 +35,17 @@ function failure(e){
 export async function GET(request){
  const q=new URL(request.url).searchParams;
  const mode=q.get('mode'),address=q.get('address');
+ if(mode==='preflight'){
+  try{
+   const check=await dbkExitPreflight();
+   return json({ok:true,canPrepareNewWithdrawal:true,outputAgeSeconds:check.outputAgeSeconds,
+     lastL1OutputIndex:check.oracleOutputIndex,blockLag:check.blockLag,
+     disclaimer:'A valid old output does not ensure future proof production, withdrawal finalization, or payout.'});
+  }catch(e){
+   const known=whitelist.has(String(e?.message||''))?String(e.message):'DBK_PREFLIGHT_UNAVAILABLE';
+   return json({ok:true,canPrepareNewWithdrawal:false,reason:known});
+  }
+ }
  if(!isAddress(address||''))return json({ok:false,error:'INVALID_WALLET_ADDRESS'},400);
  try{
   if(mode==='balance'){
@@ -49,8 +64,12 @@ export async function GET(request){
 }
 export async function POST(request){
  try{
-  const {action,hash,address}=await request.json();
-  if(action!=='prove'&&action!=='finalize')return json({ok:false,error:'NEW_DBK_WITHDRAWALS_NOT_ENABLED'},409);
+  const {action,hash,address,amount}=await request.json();
+  if(action==='prepareStart'){
+    if(!isAddress(address||''))return json({ok:false,error:'INVALID_WALLET'},400);
+    return json(await prepareNativeDbkETH({address,amount}));
+  }
+  if(action!=='prove'&&action!=='finalize')return json({ok:false,error:'UNSUPPORTED_ACTION'},409);
   if(!validHash(hash)||!isAddress(address||''))return json({ok:false,error:'INVALID_TRANSACTION_OR_WALLET'},400);
   const transaction=await prepareVerifiedRecovery({action,hash,address});
   if(!transaction.simulated||transaction.chainId!==1||transaction.to.toLowerCase()!==PORTAL.toLowerCase()

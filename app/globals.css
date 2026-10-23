@@ -60,3 +60,10 @@ footer{border-top:1px solid #ffffff19;display:flex;justify-content:space-between
 .dbk-actions button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:850px){.network-grid{grid-template-columns:1fr}.health-title{align-items:flex-start;flex-direction:column}.health-refresh{width:100%}}
 @media(max-width:600px){.chain-select button{font-size:13px;padding:13px}.health-overview{padding:17px}.health-title h2{font-size:19px}.exit-info{flex-direction:column;gap:8px}}
+
+/* DBK native ETH withdrawal — separate from previous prove/finalize route */
+.dbk-new-form{padding:17px;background:#17254175;border:1px solid #485a8459;border-radius:12px;margin-bottom:22px}
+.dbk-new-form .micro,.dbk-existing-form .micro{margin-bottom:16px}
+.dbk-new-form .amount{margin-bottom:14px}
+.dbk-new-form .amount input{font-size:22px}
+.dbk-existing-form{border-top:1px solid #ffffff24;padding-top:23px}

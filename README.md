@@ -42,3 +42,15 @@ Chain logo IPFS CID is taken from ethereum-lists/chains mainnet 320 chain icon e
 - No seed phrases, private keys, arbitrary user-provided RPCs/contracts, or custody.
 
 DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk
+
+## New DBK native ETH withdrawal (conditional)
+
+`POST /api/dbk` with `{"action":"prepareStart","address":"0x...","amount":"0.01"}` performs a strict preflight, without signing or broadcasting:
+1. Chain 20240603 and Ethereum chain 1 must have recent blocks.
+2. Ethereum must expose bytecode at the DBK-documented OptimismPortal and L2OutputOracle.
+3. Output oracle latest index and output proposal must be readable. Last L1 output timestamp must be ≤24 hours ago and must have a nonzero root; the latest posted L2 block cannot trail head by >90,000 blocks.
+4. Transaction calldata must be canonical L2ToL1MessagePasser `initiateWithdrawal(originalWallet,100000,"0x")`, with payable value exactly the user's requested ETH amount and no external recipient.
+5. Read-only `eth_call` and `eth_estimateGas` on DBK must succeed; available ETH must cover amount plus estimated gas with reserve.
+6. Client re-prepares the same transaction; validates target, calldata, amount, recipient, account, chainId; then calls `eth_estimateGas` in the user's wallet and asks for their explicit EIP-1193 transaction signature.
+
+**Important:** A recent posted output proposal does not guarantee future finalization. User may be stuck in the optimistic withdrawal period. The app does not promise an ETA, bridge fee or settlement outcome; Ethereum prove/finalize is a separate step using the existing hash inspector. Only native ETH, no tokens. There is no automatic approval, escrow or Relay solver route.

@@ -43,18 +43,14 @@ Chain logo IPFS CID is taken from ethereum-lists/chains mainnet 320 chain icon e
 
 DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk
 
-## Relay-style Fund Discovery (Oct 2026)
-The UI borrows Relay's separation of concerns rather than misrepresenting the website as a Relay-powered bridge.
+## New DBK native ETH withdrawal (conditional)
 
-- **Wallet discovery:** public address only, no signature; GET `/api/portfolio?mode=scan&address=...`.
-- **Asset discovery:** native ETH balances for ZKcandy #320 and DBK #20240603, via network-verified RPCs. Unknown RPC => unknown balance, never zero.
-- **ERC20 read-only lookup:** GET `/api/portfolio?mode=erc20&chain=dbk|zkcandy&address=...&token=...`, performs `eth_getCode`, `balanceOf`, `decimals`, `symbol`. Not an approval or token transfer.
-- **DBK recent withdrawal index:** scans a bounded recent block window for canonical `MessagePassed` from the user's wallet directly to the original wallet. Partial historical coverage is always disclosed. Verify any candidate via the existing DBK L2 receipt + L1 OptimismPortal status before signing.
-- **Route directory:** GET `/api/portfolio?mode=relay` independently reads the official `https://api.relay.link/chains` API, 2-minute cache; no Relay transaction is proposed without an actually listed and enabled chain/token route and executable quote.
-- **Recovery execution:** existing native ZK Stack ETH withdraw/finalize and DBK OP Stack inspect/prove/finalize remain chain-specific; disabled actions are not unlocked by wallet balance or a working RPC alone.
-- No fee or time quote is invented; non-functional route buttons cannot request signatures.
+`POST /api/dbk` with `{"action":"prepareStart","address":"0x...","amount":"0.01"}` performs a strict preflight, without signing or broadcasting:
+1. Chain 20240603 and Ethereum chain 1 must have recent blocks.
+2. Ethereum must expose bytecode at the DBK-documented OptimismPortal and L2OutputOracle.
+3. Output oracle latest index and output proposal must be readable. Last L1 output timestamp must be ≤24 hours ago and must have a nonzero root; the latest posted L2 block cannot trail head by >90,000 blocks.
+4. Transaction calldata must be canonical L2ToL1MessagePasser `initiateWithdrawal(originalWallet,100000,"0x")`, with payable value exactly the user's requested ETH amount and no external recipient.
+5. Read-only `eth_call` and `eth_estimateGas` on DBK must succeed; available ETH must cover amount plus estimated gas with reserve.
+6. Client re-prepares the same transaction; validates target, calldata, amount, recipient, account, chainId; then calls `eth_estimateGas` in the user's wallet and asks for their explicit EIP-1193 transaction signature.
 
-Relay protocol & API architecture:
-https://docs.relay.link/references/protocol/how-it-works
-https://docs.relay.link/references/api/get-chains
-https://docs.relay.link/references/api/get-quote-v2
+**Important:** A recent posted output proposal does not guarantee future finalization. User may be stuck in the optimistic withdrawal period. The app does not promise an ETA, bridge fee or settlement outcome; Ethereum prove/finalize is a separate step using the existing hash inspector. Only native ETH, no tokens. There is no automatic approval, escrow or Relay solver route.

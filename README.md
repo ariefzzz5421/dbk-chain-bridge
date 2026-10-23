@@ -57,7 +57,7 @@ DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk
 
 ## Simplified frontend (Relay-style flow)
 
-The website now intentionally exposes just **Connect → source chain → ETH amount → Review bridge → wallet confirmation → Track withdrawal**. RPC diagnostics, block proof checks, gas simulation and contract validation run on the server behind `app/api/simple-bridge/route.js`. The previous detailed components are retained in the repository for reference and may be removed after release validation.
+The website now intentionally exposes just **Connect → source chain → ETH amount → Review bridge → wallet confirmation → Track withdrawal**. RPC diagnostics, block proof checks, gas simulation and contract validation run on the server behind `app/api/simple-bridge/route.js`. The previous detailed homepage components are retired from the active codebase; their history remains available in Git.
 
 - `GET /api/simple-bridge?mode=balances&address=0x...`: native ETH on DBK and ZKcandy. A dead/untrusted RPC gives an **unknown** balance, never a fabricated zero.
 - `POST /api/simple-bridge` `{action:"quote",chain:"dbk"|"zkcandy",address,amount}`: calls the existing chain-native, read-only simulated transaction builder. This is **not** a solver route, guaranteed payout quote, or proof of claimability.

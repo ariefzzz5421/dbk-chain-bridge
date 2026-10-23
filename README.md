@@ -54,3 +54,18 @@ DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk
 6. Client re-prepares the same transaction; validates target, calldata, amount, recipient, account, chainId; then calls `eth_estimateGas` in the user's wallet and asks for their explicit EIP-1193 transaction signature.
 
 **Important:** A recent posted output proposal does not guarantee future finalization. User may be stuck in the optimistic withdrawal period. The app does not promise an ETA, bridge fee or settlement outcome; Ethereum prove/finalize is a separate step using the existing hash inspector. Only native ETH, no tokens. There is no automatic approval, escrow or Relay solver route.
+
+## Simplified frontend (Relay-style flow)
+
+The website now intentionally exposes just **Connect → source chain → ETH amount → Review bridge → wallet confirmation → Track withdrawal**. RPC diagnostics, block proof checks, gas simulation and contract validation run on the server behind `app/api/simple-bridge/route.js`. The previous detailed components are retained in the repository for reference and may be removed after release validation.
+
+- `GET /api/simple-bridge?mode=balances&address=0x...`: native ETH on DBK and ZKcandy. A dead/untrusted RPC gives an **unknown** balance, never a fabricated zero.
+- `POST /api/simple-bridge` `{action:"quote",chain:"dbk"|"zkcandy",address,amount}`: calls the existing chain-native, read-only simulated transaction builder. This is **not** a solver route, guaranteed payout quote, or proof of claimability.
+- `GET /api/simple-bridge?mode=status&chain=...&address=...&hash=...`: normalizes existing L2 withdrawal and Ethereum proof status.
+- `POST /api/simple-bridge` `{action:"complete",chain:"dbk",address,hash,step:"prove"|"finalize"}`: runs the verified OP Stack Ethereum simulation. The browser revalidates full calldata before wallet signature.
+- ZKcandy L1 finalization continues through `zksync-ethers` in the user's wallet, after proof checks. Any unavailable provider fails closed.
+- An optional **Track existing transaction** field is the only advanced input. Last transaction hash is saved in browser storage for resume; no private keys/seed phrases stored.
+
+The UI intentionally removes unverified third-party routing and token approvals. Current executable path is native ETH only, for the two user-selected source chains. Backend cannot bypass failed RPC, stale output roots, missing validity proofs or a stopped chain operator.
+
+**Tests required before real funds:** read-only balances, invalid/insufficient amount rejection, current contract simulation, wallet rejection, correct L2 destination and Ethereum status. Test first with an amount one can afford to lose. No actual signed user-funds bridge has been end-to-end verified.

@@ -16,10 +16,11 @@ async function toEthereum(wallet){
  if(current!==target)await wallet.request({method:'wallet_switchEthereumChain',params:[{chainId:target}]});
  if(Number(await wallet.request({method:'eth_chainId'}))!==1)throw Error('Ethereum mainnet not selected');
 }
-export default function DbkRecovery({address,wallet}){
+export default function DbkRecovery({address,wallet,initialHash=''}){
  const [balance,setBalance]=useState(null);
  const [balanceError,setBalanceError]=useState('');
  const [hash,setHash]=useState('');
+ useEffect(()=>{if(initialHash){setHash(initialHash);}},[initialHash]);
  const [status,setStatus]=useState(null),[prepared,setPrepared]=useState(null);
  const [ack,setAck]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[submitted,setSubmitted]=useState(null);
  useEffect(()=>{

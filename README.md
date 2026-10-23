@@ -42,3 +42,19 @@ Chain logo IPFS CID is taken from ethereum-lists/chains mainnet 320 chain icon e
 - No seed phrases, private keys, arbitrary user-provided RPCs/contracts, or custody.
 
 DBK bridge documentation: https://docs.dbkchain.io/bridge/bridge-sdk
+
+## Relay-style Fund Discovery (Oct 2026)
+The UI borrows Relay's separation of concerns rather than misrepresenting the website as a Relay-powered bridge.
+
+- **Wallet discovery:** public address only, no signature; GET `/api/portfolio?mode=scan&address=...`.
+- **Asset discovery:** native ETH balances for ZKcandy #320 and DBK #20240603, via network-verified RPCs. Unknown RPC => unknown balance, never zero.
+- **ERC20 read-only lookup:** GET `/api/portfolio?mode=erc20&chain=dbk|zkcandy&address=...&token=...`, performs `eth_getCode`, `balanceOf`, `decimals`, `symbol`. Not an approval or token transfer.
+- **DBK recent withdrawal index:** scans a bounded recent block window for canonical `MessagePassed` from the user's wallet directly to the original wallet. Partial historical coverage is always disclosed. Verify any candidate via the existing DBK L2 receipt + L1 OptimismPortal status before signing.
+- **Route directory:** GET `/api/portfolio?mode=relay` independently reads the official `https://api.relay.link/chains` API, 2-minute cache; no Relay transaction is proposed without an actually listed and enabled chain/token route and executable quote.
+- **Recovery execution:** existing native ZK Stack ETH withdraw/finalize and DBK OP Stack inspect/prove/finalize remain chain-specific; disabled actions are not unlocked by wallet balance or a working RPC alone.
+- No fee or time quote is invented; non-functional route buttons cannot request signatures.
+
+Relay protocol & API architecture:
+https://docs.relay.link/references/protocol/how-it-works
+https://docs.relay.link/references/api/get-chains
+https://docs.relay.link/references/api/get-quote-v2

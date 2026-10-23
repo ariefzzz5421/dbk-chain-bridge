@@ -4,6 +4,7 @@ import {ethers} from 'ethers';
 import {Provider,L1Signer} from 'zksync-ethers';
 import DbkRecovery from './components/DbkRecovery';
 import NetworkMonitor from './components/NetworkMonitor';
+import FundsOverview from './components/FundsOverview';
 import {Wallet,ArrowRight,ArrowUpRight,ShieldCheck,LockKeyhole,Activity,RefreshCcw,ExternalLink,AlertTriangle,CheckCircle2,Info} from 'lucide-react';
 
 const BASE='0x000000000000000000000000000000000000800a';
@@ -54,6 +55,7 @@ export default function Home(){
  const [ack,setAck]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[tx,setTx]=useState(null);
  const [walletStatus,setWalletStatus]=useState(null),[balanceSource,setBalanceSource]=useState('');
  const [activeChain,setActiveChain]=useState('zkcandy');
+ const [discoveredDbkHash,setDiscoveredDbkHash]=useState('');
  const wallet=typeof window!=='undefined'?window.ethereum:null;
  useEffect(()=>{
    refresh();
@@ -161,6 +163,7 @@ export default function Home(){
     <button role="tab" aria-selected={activeChain==='zkcandy'} className={activeChain==='zkcandy'?'selected':''} onClick={()=>{setActiveChain('zkcandy');setError('')}}>ZK candy <small>ZK Stack · Chain 320</small></button>
     <button role="tab" aria-selected={activeChain==='dbk'} className={activeChain==='dbk'?'selected':''} onClick={()=>{setActiveChain('dbk');setError('')}}>DBK Chain <small>OP Stack · Chain 20240603</small></button>
   </div>
+  <FundsOverview address={address} onSelectChain={setActiveChain} onPickDbkTx={setDiscoveredDbkHash}/>
   <NetworkMonitor/>
   {activeChain==='zkcandy'?<div className="workspace" id="bridge">
    <div className="panel">
@@ -203,7 +206,7 @@ export default function Home(){
     {health?.zkcandyChecks?.length?<div className="rpc-details"><b>Public ZK candy endpoint tests</b>{health.zkcandyChecks.map(check=><div key={check.label}><span>{check.label}</span><strong className={check.ok?'green':'red'}>{check.ok?'Connected':'Failed'}</strong></div>)}</div>:null}
     <p className="hint">Wallet RPC detection is read-only. Only verified L1 batch settlement can enable new withdrawals; an online RPC alone is not enough.</p>
    </div><div className="side-panel safety"><div className="micro">SAFETY RULES</div><h3>Never share</h3><p><ShieldCheck size={16}/> Seed phrase or private keys</p><p><LockKeyhole size={16}/> Recovery fees to a third party</p><p><CheckCircle2 size={16}/> Arbitrary token approvals</p></div></aside>
-  </div>:<DbkRecovery address={address} wallet={wallet}/>}
+  </div>:<DbkRecovery address={address} wallet={wallet} initialHash={discoveredDbkHash}/>}
   <section className="how" id="how"><div className="micro">RECOVERY PROCESS</div><h2>One bridge. Two stages.</h2><div className="steps">{[
    ['01','Initiate on ZKcandy','Native ETH calls the verified L2 BaseToken contract. New withdrawals are blocked if recent L1 execution is missing.'],
    ['02','Wait for L1 proof','The ZKcandy operator must execute the batch and expose a withdrawal proof. An RPC response alone is insufficient.'],
